@@ -39,4 +39,29 @@ class ArchitectureSmokeTest {
             assertTrue("Expected package directory does not exist: $pkg", dir.exists() && dir.isDirectory)
         }
     }
+
+    @Test
+    fun domainLayer_doesNotImportDataLayer() {
+        val domainDir = File("src/main/java/com/haitranduc/fittrack/domain")
+        assertTrue("Domain directory must exist", domainDir.exists() && domainDir.isDirectory)
+
+        val forbiddenImportPrefixes = listOf(
+            "import com.haitranduc.fittrack.data",
+            "import android.",
+            "import androidx.room."
+        )
+
+        domainDir.walkTopDown().filter { it.isFile && it.extension == "kt" }.forEach { file ->
+            val lines = file.readLines()
+            for ((index, line) in lines.withIndex()) {
+                val trimmed = line.trim()
+                for (prefix in forbiddenImportPrefixes) {
+                    org.junit.Assert.assertFalse(
+                        "Clean Architecture violation in ${file.name}:${index + 1}: '$trimmed' is forbidden in domain layer",
+                        trimmed.startsWith(prefix)
+                    )
+                }
+            }
+        }
+    }
 }
