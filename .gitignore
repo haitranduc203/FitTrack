@@ -1,0 +1,23 @@
+﻿# Track only the Android project source tree at the repository root.
+/*
+!/.gitignore
+!/FitTrack/
+!/FitTrack/**
+
+# Android / Gradle build outputs
+.gradle/
+**/build/
+local.properties
+
+# Android Studio / IntelliJ workspace files
+.idea/
+*.iml
+
+# Native build and keystore artifacts
+.cxx/
+*.keystore
+*.jks
+
+# Operating-system files
+.DS_Store
+Thumbs.db

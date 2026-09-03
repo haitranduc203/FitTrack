@@ -1,0 +1,27 @@
+<resources>
+    <string name="app_name">FitTrack</string>
+    <string name="app_monogram">FT</string>
+    <string name="app_subtitle">Workout &amp; Exercise Tracker</string>
+    <string name="startup_hero_symbol">⚡</string>
+    <string name="status_check_symbol">✓</string>
+    <string name="status_m0_complete">Milestone M0 — Setup Complete</string>
+    <string name="section_system_foundation">System Foundation</string>
+
+    <string name="status_label_architecture">Architecture</string>
+    <string name="status_detail_architecture">Single-module Clean Architecture</string>
+
+    <string name="status_label_di">Dependency Injection</string>
+    <string name="status_detail_di">Hilt 2.59.2</string>
+
+    <string name="status_label_db">Local Database</string>
+    <string name="status_detail_db">Room 2.6.1 + KSP</string>
+
+    <string name="status_label_navigation">Navigation</string>
+    <string name="status_detail_navigation">Navigation Compose 2.8.8</string>
+
+    <string name="status_label_preferences">Preferences</string>
+    <string name="status_detail_preferences">DataStore Preferences 1.1.3</string>
+
+    <string name="status_label_ui">UI Toolkit</string>
+    <string name="status_detail_ui">Compose BOM 2026.03.01 + Material 3</string>
+</resources>
