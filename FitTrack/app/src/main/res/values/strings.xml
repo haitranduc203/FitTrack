@@ -24,4 +24,142 @@
 
     <string name="status_label_ui">UI Toolkit</string>
     <string name="status_detail_ui">Compose BOM 2026.03.01 + Material 3</string>
+
+    <!-- M1 Navigation -->
+    <string name="nav_exercises">Exercises</string>
+    <string name="nav_workouts">Workouts</string>
+    <string name="nav_history">History</string>
+    <string name="cd_navigate_up">Navigate back</string>
+    <string name="cd_create_workout">Create new workout</string>
+    <string name="cd_remove_exercise">Remove exercise</string>
+    <string name="cd_set_done">Mark set as completed</string>
+
+    <!-- M1 Exercises & Filter -->
+    <string name="title_exercises">Exercises</string>
+    <string name="label_search_exercises">Search exercises</string>
+    <string name="hint_search_exercises">Search exercises&#8230;</string>
+    <string name="filter_all">All</string>
+    <string name="filter_chest">Chest</string>
+    <string name="filter_shoulders">Shoulders</string>
+    <string name="filter_back">Back</string>
+    <string name="filter_legs">Legs</string>
+    <string name="filter_barbell">Barbell</string>
+    <string name="filter_bodyweight">Bodyweight</string>
+    <string name="filter_dumbbell">Dumbbell</string>
+    <string name="label_body_part_filter">Body Part</string>
+    <string name="label_equipment_filter">Equipment</string>
+    <string name="empty_exercises">No exercises found matching your search.</string>
+    <string name="title_exercise_detail">Exercise Detail</string>
+    <string name="placeholder_media_title">Exercise Demonstration Placeholder</string>
+    <string name="placeholder_media_subtitle">Media license from dataset is not bundled</string>
+    <string name="label_target">Target</string>
+    <string name="label_equipment">Equipment</string>
+    <string name="label_body_part">Body Part</string>
+    <string name="label_secondary_muscles">Secondary Muscles</string>
+    <string name="label_instructions">Instructions</string>
+
+    <!-- Mock Exercise Names -->
+    <string name="exercise_name_bench_press">Barbell Bench Press</string>
+    <string name="exercise_name_overhead_press">Overhead Press</string>
+    <string name="exercise_name_squat">Barbell Squat</string>
+    <string name="exercise_name_deadlift">Conventional Deadlift</string>
+    <string name="exercise_name_pull_up">Pull Up</string>
+
+    <!-- Mock Metadata Values -->
+    <string name="body_part_chest">Chest</string>
+    <string name="body_part_shoulders">Shoulders</string>
+    <string name="body_part_legs">Legs</string>
+    <string name="body_part_back">Back</string>
+
+    <string name="target_pectorals">Pectorals</string>
+    <string name="target_deltoids">Deltoids</string>
+    <string name="target_quadriceps">Quadriceps</string>
+    <string name="target_erector_spinae">Erector Spinae</string>
+    <string name="target_latissimus_dorsi">Latissimus Dorsi</string>
+
+    <string name="equipment_barbell">Barbell</string>
+    <string name="equipment_bodyweight">Bodyweight</string>
+    <string name="equipment_dumbbell">Dumbbell</string>
+
+    <string name="muscle_triceps">Triceps</string>
+    <string name="muscle_anterior_deltoids">Anterior Deltoids</string>
+    <string name="muscle_upper_chest">Upper Chest</string>
+    <string name="muscle_glutes">Glutes</string>
+    <string name="muscle_hamstrings">Hamstrings</string>
+    <string name="muscle_lower_back">Lower Back</string>
+    <string name="muscle_trapezius">Trapezius</string>
+    <string name="muscle_biceps">Biceps</string>
+    <string name="muscle_forearms">Forearms</string>
+
+    <!-- Mock Instructions -->
+    <string name="instruction_bench_press_1">Lie flat on the bench with feet firmly planted on the floor.</string>
+    <string name="instruction_bench_press_2">Grip the barbell slightly wider than shoulder-width apart.</string>
+    <string name="instruction_bench_press_3">Unrack the bar and lower it with control toward mid-chest.</string>
+    <string name="instruction_bench_press_4">Press the bar back up until your arms are fully extended.</string>
+
+    <string name="instruction_ohp_1">Stand with feet shoulder-width apart holding the barbell at collarbone level.</string>
+    <string name="instruction_ohp_2">Brace your core and press the bar directly overhead until arms lock out.</string>
+    <string name="instruction_ohp_3">Lower the bar back to collarbone level under control.</string>
+
+    <string name="instruction_squat_1">Position the bar comfortably across your upper back and traps.</string>
+    <string name="instruction_squat_2">Descend by bending hips and knees simultaneously while keeping chest up.</string>
+    <string name="instruction_squat_3">Lower until thighs are at least parallel to the floor.</string>
+    <string name="instruction_squat_4">Drive through your mid-foot to return to the starting upright position.</string>
+
+    <string name="instruction_deadlift_1">Stand with feet hip-width apart and mid-foot directly under the bar.</string>
+    <string name="instruction_deadlift_2">Hinge at the hips and grasp the bar just outside your knees.</string>
+    <string name="instruction_deadlift_3">Pull chest tall, flatten back, and drive through the floor to stand upright.</string>
+    <string name="instruction_deadlift_4">Lower the bar back to the floor along your shins with a controlled hinge.</string>
+
+    <string name="instruction_pullup_1">Grip the overhead pull-up bar with an overhand grip wider than shoulders.</string>
+    <string name="instruction_pullup_2">Hang with arms fully extended, engaging your lats and core.</string>
+    <string name="instruction_pullup_3">Pull your chest up toward the bar until your chin clears it.</string>
+    <string name="instruction_pullup_4">Lower yourself back down smoothly to the full hang position.</string>
+
+    <!-- M1 Workouts & Editor -->
+    <string name="title_workouts">Workouts</string>
+    <string name="empty_workouts">No workouts available. Tap + to create one.</string>
+    <string name="btn_create_workout">Create Workout</string>
+    <string name="title_new_workout">New Workout</string>
+    <string name="title_edit_workout">Edit Workout</string>
+    <string name="label_workout_name">Workout Name</string>
+    <string name="section_exercises">Exercises</string>
+    <string name="btn_add_exercise">Add Exercise</string>
+    <string name="btn_save_workout">Save</string>
+    <string name="btn_start_workout">Start Workout</string>
+    <string name="label_sets_format">%1$d sets · %2$s reps</string>
+    <string name="label_exercises_count">%1$d exercises</string>
+
+    <!-- Mock Workout Templates & Reps -->
+    <string name="workout_template_push_day">Push Day</string>
+    <string name="workout_template_pull_day">Pull Day</string>
+    <string name="workout_template_leg_day">Leg Day</string>
+    <string name="reps_range_8_10">8&#8211;10</string>
+    <string name="reps_range_10_12">10&#8211;12</string>
+    <string name="reps_range_5">5</string>
+    <string name="reps_range_8_12">8&#8211;12</string>
+    <string name="reps_range_10">10</string>
+
+    <!-- M1 Active Workout -->
+    <string name="title_active_workout">Active Workout</string>
+    <string name="label_elapsed_time">Elapsed Time</string>
+    <string name="mock_elapsed_time">00:24:15</string>
+    <string name="label_set_header">Set</string>
+    <string name="label_kg_header">kg</string>
+    <string name="label_reps_header">Reps</string>
+    <string name="label_done_header">Done</string>
+    <string name="btn_add_set">Add Set</string>
+    <string name="btn_finish_workout">Finish Workout</string>
+
+    <!-- M1 History & Detail -->
+    <string name="title_history">Workout History</string>
+    <string name="empty_history">No completed workouts yet.</string>
+    <string name="title_history_detail">Workout Summary</string>
+    <string name="label_duration">Duration</string>
+    <string name="label_completed_on">Completed on</string>
+    <string name="label_set_summary_format">Set %1$d: %2$s kg × %3$d reps</string>
+    <string name="history_date_yesterday">Yesterday, 18:30</string>
+    <string name="history_date_3days">3 days ago</string>
+    <string name="history_duration_48m">48 mins</string>
+    <string name="history_duration_42m">42 mins</string>
 </resources>
