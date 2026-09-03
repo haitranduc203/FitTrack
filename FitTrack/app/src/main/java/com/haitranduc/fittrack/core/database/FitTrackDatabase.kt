@@ -4,6 +4,7 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.haitranduc.fittrack.data.local.dao.ExerciseDao
+import com.haitranduc.fittrack.data.local.dao.WorkoutDao
 import com.haitranduc.fittrack.data.local.entity.ExerciseEntity
 import com.haitranduc.fittrack.data.local.entity.SetLogEntity
 import com.haitranduc.fittrack.data.local.entity.WorkoutEntity
@@ -24,4 +25,6 @@ import com.haitranduc.fittrack.data.local.entity.WorkoutSessionEntity
 @TypeConverters(StringListConverters::class)
 abstract class FitTrackDatabase : RoomDatabase() {
     abstract fun exerciseDao(): ExerciseDao
+    abstract fun workoutDao(): WorkoutDao
 }
+
