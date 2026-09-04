@@ -43,8 +43,9 @@ class HistoryViewModel @Inject constructor(
             combine(
                 workoutHistoryRepository.observeHistory(),
                 statisticsRepository.observeTotalWorkouts(),
-                statisticsRepository.observeTotalCompletedSets()
-            ) { historyResult, workoutsResult, setsResult ->
+                statisticsRepository.observeTotalCompletedSets(),
+                statisticsRepository.observeTotalTrainingTimeSeconds()
+            ) { historyResult, workoutsResult, setsResult, timeResult ->
                 when (historyResult) {
                     is DataResult.Success -> {
                         val totalWorkouts = when (workoutsResult) {
@@ -55,9 +56,14 @@ class HistoryViewModel @Inject constructor(
                             is DataResult.Success -> setsResult.data
                             is DataResult.Failure -> 0L
                         }
+                        val totalTime = when (timeResult) {
+                            is DataResult.Success -> timeResult.data
+                            is DataResult.Failure -> 0L
+                        }
                         val error = when {
                             workoutsResult is DataResult.Failure -> workoutsResult.error.toUiText()
                             setsResult is DataResult.Failure -> setsResult.error.toUiText()
+                            timeResult is DataResult.Failure -> timeResult.error.toUiText()
                             else -> null
                         }
                         HistoryUiState(
@@ -65,6 +71,7 @@ class HistoryViewModel @Inject constructor(
                             sessions = historyResult.data,
                             totalWorkouts = totalWorkouts,
                             totalCompletedSets = totalSets,
+                            totalTrainingTimeSeconds = totalTime,
                             errorMessage = error
                         )
                     }
@@ -74,6 +81,7 @@ class HistoryViewModel @Inject constructor(
                             sessions = emptyList(),
                             totalWorkouts = 0L,
                             totalCompletedSets = 0L,
+                            totalTrainingTimeSeconds = 0L,
                             errorMessage = historyResult.error.toUiText()
                         )
                     }

@@ -26,4 +26,10 @@ class StatisticsRepositoryImpl @Inject constructor(
             .map<Long, DataResult<Long>> { count -> DataResult.Success(count) }
             .catch { e -> emit(DataResult.Failure(DataError.Database(e))) }
     }
+
+    override fun observeTotalTrainingTimeSeconds(): Flow<DataResult<Long>> {
+        return statisticsDao.observeTotalTrainingTimeSeconds()
+            .map<Long, DataResult<Long>> { seconds -> DataResult.Success(seconds) }
+            .catch { e -> emit(DataResult.Failure(DataError.Database(e))) }
+    }
 }

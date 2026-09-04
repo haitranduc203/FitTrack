@@ -116,7 +116,7 @@ fun HistoryContent(
                     )
                     StatisticItem(
                         label = stringResource(R.string.stat_time),
-                        value = stringResource(R.string.stat_placeholder)
+                        value = formatTrainingTime(uiState.totalTrainingTimeSeconds)
                     )
                 }
             }
@@ -270,6 +270,18 @@ private fun formatDate(timestamp: Long): String {
     return formatter.format(Date(timestamp))
 }
 
+fun formatTrainingTime(durationSeconds: Long?): String {
+    if (durationSeconds == null || durationSeconds <= 0L) return "0m"
+    val totalMinutes = durationSeconds / 60
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return if (hours > 0) {
+        "${hours}h ${minutes}m"
+    } else {
+        "${totalMinutes}m"
+    }
+}
+
 @Composable
 private fun StatisticItem(
     label: String,
@@ -304,6 +316,7 @@ private fun HistoryContentPopulatedPreview() {
                 isLoading = false,
                 totalWorkouts = 2L,
                 totalCompletedSets = 12L,
+                totalTrainingTimeSeconds = 5500L,
                 sessions = listOf(
                     WorkoutSession(
                         id = 1L,
@@ -340,6 +353,7 @@ private fun HistoryContentEmptyPreview() {
                 isLoading = false,
                 totalWorkouts = 0L,
                 totalCompletedSets = 0L,
+                totalTrainingTimeSeconds = 0L,
                 sessions = emptyList()
             ),
             onSessionClick = {},

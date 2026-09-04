@@ -185,4 +185,62 @@ class StatisticsDaoTest {
         val totalAfterFinished = statisticsDao.observeTotalCompletedSets().first()
         assertEquals(3L, totalAfterFinished)
     }
+
+    @Test
+    fun observeTotalTrainingTimeSeconds_empty_returnsZero() = runBlocking {
+        val total = statisticsDao.observeTotalTrainingTimeSeconds().first()
+        assertEquals(0L, total)
+    }
+
+    @Test
+    fun observeTotalTrainingTimeSeconds_sumsOnlyNonnegativeDurationFromFinishedSessions() = runBlocking {
+        val unfinishedSession = WorkoutSessionEntity(
+            id = 1L,
+            workoutId = null,
+            workoutNameSnapshot = "Unfinished Workout",
+            startedAt = 1000L,
+            finishedAt = null,
+            durationSeconds = 1200L
+        )
+        workoutSessionDao.insertSession(unfinishedSession)
+
+        val totalAfterUnfinished = statisticsDao.observeTotalTrainingTimeSeconds().first()
+        assertEquals(0L, totalAfterUnfinished)
+
+        val finishedSessionNegativeDuration = WorkoutSessionEntity(
+            id = 2L,
+            workoutId = null,
+            workoutNameSnapshot = "Finished Negative",
+            startedAt = 2000L,
+            finishedAt = 3000L,
+            durationSeconds = -50L
+        )
+        workoutSessionDao.insertSession(finishedSessionNegativeDuration)
+
+        val totalAfterNegative = statisticsDao.observeTotalTrainingTimeSeconds().first()
+        assertEquals(0L, totalAfterNegative)
+
+        val finishedSession1 = WorkoutSessionEntity(
+            id = 3L,
+            workoutId = null,
+            workoutNameSnapshot = "Finished 1",
+            startedAt = 4000L,
+            finishedAt = 5000L,
+            durationSeconds = 1500L
+        )
+        workoutSessionDao.insertSession(finishedSession1)
+
+        val finishedSession2 = WorkoutSessionEntity(
+            id = 4L,
+            workoutId = null,
+            workoutNameSnapshot = "Finished 2",
+            startedAt = 6000L,
+            finishedAt = 8000L,
+            durationSeconds = 2000L
+        )
+        workoutSessionDao.insertSession(finishedSession2)
+
+        val totalAfterFinished = statisticsDao.observeTotalTrainingTimeSeconds().first()
+        assertEquals(3500L, totalAfterFinished)
+    }
 }

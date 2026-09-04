@@ -167,6 +167,55 @@ class HistoryViewModelTest {
     }
 
     @Test
+    fun observeTotalTrainingTimeSeconds_empty_showsZero() = runTest {
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(0L, state.totalTrainingTimeSeconds)
+    }
+
+    @Test
+    fun observeTotalTrainingTimeSeconds_success_updatesTotalTrainingTime() = runTest {
+        statisticsRepository.setTotalTrainingTimeSeconds(7500L)
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(7500L, state.totalTrainingTimeSeconds)
+    }
+
+    @Test
+    fun observeTotalTrainingTimeSeconds_failure_showsErrorMessage() = runTest {
+        statisticsRepository.observeTotalTrainingTimeSecondsError = DataError.Database(RuntimeException("DB Read Error"))
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
+    }
+
+    @Test
+    fun formatTrainingTime_matchesRequirements() {
+        // 0 seconds -> 0m
+        assertEquals("0m", formatTrainingTime(0L))
+        assertEquals("0m", formatTrainingTime(null))
+        assertEquals("0m", formatTrainingTime(-10L))
+
+        // 59 minutes -> 59m
+        assertEquals("59m", formatTrainingTime(59L * 60L))
+
+        // 60 minutes -> 1h 0m
+        assertEquals("1h 0m", formatTrainingTime(60L * 60L))
+
+        // 125 minutes -> 2h 5m
+        assertEquals("2h 5m", formatTrainingTime(125L * 60L))
+    }
+
+    @Test
     fun retry_clearsErrorAndReloads() = runTest {
         historyRepository.observeHistoryError = DataError.Database(RuntimeException("DB Read Error"))
         val viewModel = HistoryViewModel(historyRepository, statisticsRepository)

@@ -198,6 +198,8 @@
     <string name="stat_sets">Sets</string>
     <string name="stat_time">Time</string>
     <string name="stat_placeholder">-</string>
+    <string name="stat_time_hours_minutes">%1$dh %2$dm</string>
+    <string name="stat_time_minutes">%1$dm</string>
 
     <!-- M4 Settings & Theme -->
     <string name="title_settings">Settings</string>

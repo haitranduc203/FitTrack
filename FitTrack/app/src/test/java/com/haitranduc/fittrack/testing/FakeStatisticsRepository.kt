@@ -10,7 +10,8 @@ import kotlinx.coroutines.flow.map
 
 class FakeStatisticsRepository(
     initialTotalWorkouts: Long = 0L,
-    initialTotalCompletedSets: Long = 0L
+    initialTotalCompletedSets: Long = 0L,
+    initialTotalTrainingTimeSeconds: Long = 0L
 ) : StatisticsRepository {
 
     private val totalWorkoutsFlow = MutableStateFlow(initialTotalWorkouts)
@@ -19,12 +20,19 @@ class FakeStatisticsRepository(
     private val totalCompletedSetsFlow = MutableStateFlow(initialTotalCompletedSets)
     var observeTotalCompletedSetsError: DataError? = null
 
+    private val totalTrainingTimeSecondsFlow = MutableStateFlow(initialTotalTrainingTimeSeconds)
+    var observeTotalTrainingTimeSecondsError: DataError? = null
+
     fun setTotalWorkouts(count: Long) {
         totalWorkoutsFlow.value = count
     }
 
     fun setTotalCompletedSets(count: Long) {
         totalCompletedSetsFlow.value = count
+    }
+
+    fun setTotalTrainingTimeSeconds(seconds: Long) {
+        totalTrainingTimeSecondsFlow.value = seconds
     }
 
     override fun observeTotalWorkouts(): Flow<DataResult<Long>> {
@@ -45,6 +53,17 @@ class FakeStatisticsRepository(
                 DataResult.Failure(err)
             } else {
                 DataResult.Success(count)
+            }
+        }
+    }
+
+    override fun observeTotalTrainingTimeSeconds(): Flow<DataResult<Long>> {
+        return totalTrainingTimeSecondsFlow.asStateFlow().map { seconds ->
+            val err = observeTotalTrainingTimeSecondsError
+            if (err != null) {
+                DataResult.Failure(err)
+            } else {
+                DataResult.Success(seconds)
             }
         }
     }
