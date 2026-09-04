@@ -23,6 +23,7 @@ import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -82,6 +83,7 @@ fun ActiveWorkoutScreen(
         onCompleteSetClicked = viewModel::onCompleteSetClicked,
         onFinishClicked = viewModel::onFinishClicked,
         onNavigateUp = onNavigateUp,
+        onSkipRestTimer = viewModel::onSkipRestTimer,
         modifier = modifier
     )
 }
@@ -95,6 +97,7 @@ fun ActiveWorkoutContent(
     onCompleteSetClicked: (Exercise) -> Unit,
     onFinishClicked: () -> Unit,
     onNavigateUp: () -> Unit,
+    onSkipRestTimer: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -198,6 +201,57 @@ fun ActiveWorkoutContent(
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Rest Timer Banner (M4)
+                if (uiState.restTimerRemainingSeconds > 0L) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        ),
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = stringResource(R.string.label_rest_timer),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    val minutes = uiState.restTimerRemainingSeconds / 60L
+                                    val seconds = uiState.restTimerRemainingSeconds % 60L
+                                    Text(
+                                        text = stringResource(R.string.rest_timer_format, minutes, seconds),
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                }
+                                Button(
+                                    onClick = onSkipRestTimer,
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Text(stringResource(R.string.btn_skip_rest))
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            val progress = (uiState.restTimerRemainingSeconds.toFloat() / 90f).coerceIn(0f, 1f)
+                            LinearProgressIndicator(
+                                progress = { progress },
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.secondary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
                             )
                         }
                     }
@@ -497,6 +551,73 @@ private fun ActiveWorkoutContentLoadingPreview() {
             onCompleteSetClicked = {},
             onFinishClicked = {},
             onNavigateUp = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Active Workout - Rest Timer Active")
+@Composable
+private fun ActiveWorkoutContentRestTimerPreview() {
+    FitTrackTheme {
+        ActiveWorkoutContent(
+            uiState = ActiveWorkoutUiState(
+                isLoading = false,
+                elapsedTimeSeconds = 300L,
+                restTimerEndsAtMillis = 100_000L,
+                restTimerRemainingSeconds = 75L,
+                session = WorkoutSession(
+                    id = 1L,
+                    workoutId = 1L,
+                    workoutNameSnapshot = "Chest Day",
+                    startedAt = 1000L,
+                    finishedAt = null,
+                    durationSeconds = null,
+                    sets = listOf(
+                        SetLog(
+                            id = 1L,
+                            sessionId = 1L,
+                            exerciseId = "e1",
+                            exerciseNameSnapshot = "Barbell Bench Press",
+                            setNumber = 1,
+                            reps = 10,
+                            weightKg = 50.0,
+                            completedAt = 1100L
+                        )
+                    )
+                ),
+                exercises = listOf(
+                    Exercise(
+                        id = "e1",
+                        name = "Barbell Bench Press",
+                        bodyPart = "chest",
+                        equipment = "barbell",
+                        target = "pectorals",
+                        muscleGroup = "chest",
+                        secondaryMuscles = emptyList(),
+                        instructions = emptyList()
+                    )
+                ),
+                completedSets = listOf(
+                    SetLog(
+                        id = 1L,
+                        sessionId = 1L,
+                        exerciseId = "e1",
+                        exerciseNameSnapshot = "Barbell Bench Press",
+                        setNumber = 1,
+                        reps = 10,
+                        weightKg = 50.0,
+                        completedAt = 1100L
+                    )
+                ),
+                inputReps = mapOf("e1" to "10"),
+                inputWeight = mapOf("e1" to "50")
+            ),
+            onRepsChanged = { _, _ -> },
+            onWeightChanged = { _, _ -> },
+            onCompleteSetClicked = {},
+            onFinishClicked = {},
+            onNavigateUp = {},
+            onSkipRestTimer = {}
         )
     }
 }

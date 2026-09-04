@@ -172,6 +172,10 @@
     <string name="label_done_header">Done</string>
     <string name="btn_add_set">Add Set</string>
     <string name="btn_finish_workout">Finish Workout</string>
+    <string name="label_rest_timer">Rest</string>
+    <string name="btn_skip_rest">Skip</string>
+    <string name="cd_skip_rest">Skip rest timer</string>
+    <string name="rest_timer_format">%1$02d:%2$02d</string>
 
     <!-- M1 History & Detail -->
     <string name="title_history">Workout History</string>

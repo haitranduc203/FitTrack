@@ -19,5 +19,7 @@ data class ActiveWorkoutUiState(
     val isFinishing: Boolean = false,
     val finishError: UiText? = null,
     val finishedSessionId: Long? = null,
-    val elapsedTimeSeconds: Long = 0L
+    val elapsedTimeSeconds: Long = 0L,
+    val restTimerEndsAtMillis: Long? = null,
+    val restTimerRemainingSeconds: Long = 0L
 )

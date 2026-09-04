@@ -87,12 +87,14 @@ class ActiveWorkoutViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun createViewModel(sessionId: Any? = 10L): ActiveWorkoutViewModel {
-        val handle = if (sessionId != null) {
+    private fun createViewModel(
+        sessionId: Any? = 10L,
+        handle: SavedStateHandle = if (sessionId != null) {
             SavedStateHandle(mapOf("sessionId" to sessionId))
         } else {
             SavedStateHandle()
         }
+    ): ActiveWorkoutViewModel {
         return ActiveWorkoutViewModel(
             savedStateHandle = handle,
             workoutHistoryRepository = workoutHistoryRepository,
@@ -286,5 +288,146 @@ class ActiveWorkoutViewModelTest {
         advanceUntilIdle()
 
         assertEquals(10L, vm.uiState.value.finishedSessionId)
+    }
+
+    @Test
+    fun completeSet_success_startsRestTimerAt90Seconds() = runTest {
+        val handle = SavedStateHandle(mapOf("sessionId" to 10L))
+        val vm = createViewModel(sessionId = 10L, handle = handle)
+        advanceUntilIdle()
+
+        vm.onRepsChanged("e1", "10")
+        vm.onWeightChanged("e1", "50")
+        vm.onCompleteSetClicked(sampleExercise)
+        advanceUntilIdle()
+
+        assertEquals(90L, vm.uiState.value.restTimerRemainingSeconds)
+        assertEquals(15_000L + 90_000L, vm.uiState.value.restTimerEndsAtMillis)
+        assertEquals(15_000L + 90_000L, handle.get<Long>("rest_timer_ends_at_millis"))
+    }
+
+    @Test
+    fun completeSet_persistenceFailure_doesNotStartRestTimer() = runTest {
+        workoutHistoryRepository.insertSetError = DataError.Database(RuntimeException("Disk error"))
+        val handle = SavedStateHandle(mapOf("sessionId" to 10L))
+        val vm = createViewModel(sessionId = 10L, handle = handle)
+        advanceUntilIdle()
+
+        vm.onRepsChanged("e1", "10")
+        vm.onWeightChanged("e1", "50")
+        vm.onCompleteSetClicked(sampleExercise)
+        advanceUntilIdle()
+
+        assertEquals(0L, vm.uiState.value.restTimerRemainingSeconds)
+        assertNull(vm.uiState.value.restTimerEndsAtMillis)
+        assertNull(handle.get<Long>("rest_timer_ends_at_millis"))
+    }
+
+    @Test
+    fun timerTick_decrementsRemainingRestSeconds() = runTest {
+        val vm = createViewModel(sessionId = 10L)
+        advanceUntilIdle()
+
+        vm.onRepsChanged("e1", "10")
+        vm.onWeightChanged("e1", "50")
+        vm.onCompleteSetClicked(sampleExercise)
+        advanceUntilIdle()
+
+        assertEquals(90L, vm.uiState.value.restTimerRemainingSeconds)
+
+        timeProvider.currentTime += 30_000L
+        vm.onTimerTick()
+
+        assertEquals(60L, vm.uiState.value.restTimerRemainingSeconds)
+    }
+
+    @Test
+    fun timerTick_atOrPastDeadline_expiresRestTimerAndClearsSavedState() = runTest {
+        val handle = SavedStateHandle(mapOf("sessionId" to 10L))
+        val vm = createViewModel(sessionId = 10L, handle = handle)
+        advanceUntilIdle()
+
+        vm.onRepsChanged("e1", "10")
+        vm.onWeightChanged("e1", "50")
+        vm.onCompleteSetClicked(sampleExercise)
+        advanceUntilIdle()
+
+        timeProvider.currentTime += 90_000L
+        vm.onTimerTick()
+
+        assertEquals(0L, vm.uiState.value.restTimerRemainingSeconds)
+        assertNull(vm.uiState.value.restTimerEndsAtMillis)
+        assertNull(handle.get<Long>("rest_timer_ends_at_millis"))
+    }
+
+    @Test
+    fun skipRestTimer_clearsTimerAndSavedStateImmediately() = runTest {
+        val handle = SavedStateHandle(mapOf("sessionId" to 10L))
+        val vm = createViewModel(sessionId = 10L, handle = handle)
+        advanceUntilIdle()
+
+        vm.onRepsChanged("e1", "10")
+        vm.onWeightChanged("e1", "50")
+        vm.onCompleteSetClicked(sampleExercise)
+        advanceUntilIdle()
+
+        assertEquals(90L, vm.uiState.value.restTimerRemainingSeconds)
+
+        vm.onSkipRestTimer()
+
+        assertEquals(0L, vm.uiState.value.restTimerRemainingSeconds)
+        assertNull(vm.uiState.value.restTimerEndsAtMillis)
+        assertNull(handle.get<Long>("rest_timer_ends_at_millis"))
+    }
+
+    @Test
+    fun anotherSuccessfulSet_resetsRestTimerTo90Seconds() = runTest {
+        val handle = SavedStateHandle(mapOf("sessionId" to 10L))
+        val vm = createViewModel(sessionId = 10L, handle = handle)
+        advanceUntilIdle()
+
+        vm.onRepsChanged("e1", "10")
+        vm.onWeightChanged("e1", "50")
+        vm.onCompleteSetClicked(sampleExercise)
+        advanceUntilIdle()
+
+        assertEquals(90L, vm.uiState.value.restTimerRemainingSeconds)
+
+        timeProvider.currentTime += 40_000L
+        vm.onTimerTick()
+        assertEquals(50L, vm.uiState.value.restTimerRemainingSeconds)
+
+        // Complete second set
+        vm.onRepsChanged("e1", "8")
+        vm.onWeightChanged("e1", "55")
+        vm.onCompleteSetClicked(sampleExercise)
+        advanceUntilIdle()
+
+        assertEquals(90L, vm.uiState.value.restTimerRemainingSeconds)
+        assertEquals(timeProvider.currentTime + 90_000L, vm.uiState.value.restTimerEndsAtMillis)
+        assertEquals(timeProvider.currentTime + 90_000L, handle.get<Long>("rest_timer_ends_at_millis"))
+    }
+
+    @Test
+    fun viewModelInit_withSavedRestTimer_restoresActiveRestTimer() = runTest {
+        val endsAt = 15_000L + 45_000L
+        val handle = SavedStateHandle(mapOf("sessionId" to 10L, "rest_timer_ends_at_millis" to endsAt))
+        val vm = createViewModel(sessionId = 10L, handle = handle)
+        advanceUntilIdle()
+
+        assertEquals(45L, vm.uiState.value.restTimerRemainingSeconds)
+        assertEquals(endsAt, vm.uiState.value.restTimerEndsAtMillis)
+    }
+
+    @Test
+    fun viewModelInit_withExpiredSavedRestTimer_clearsExpiredTimer() = runTest {
+        val pastEndsAt = 10_000L // timeProvider is at 15_000L
+        val handle = SavedStateHandle(mapOf("sessionId" to 10L, "rest_timer_ends_at_millis" to pastEndsAt))
+        val vm = createViewModel(sessionId = 10L, handle = handle)
+        advanceUntilIdle()
+
+        assertEquals(0L, vm.uiState.value.restTimerRemainingSeconds)
+        assertNull(vm.uiState.value.restTimerEndsAtMillis)
+        assertNull(handle.get<Long>("rest_timer_ends_at_millis"))
     }
 }
