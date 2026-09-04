@@ -12,8 +12,10 @@ import com.haitranduc.fittrack.testing.FakeWorkoutRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -362,7 +364,7 @@ class WorkoutEditorViewModelTest {
     }
 
     @Test
-    fun onStartClicked_activeSessionConflict_showsErrorMessageWithoutNavigating() = runTest {
+    fun onStartClicked_activeSessionConflict_emitsNavigateToActiveWorkoutWithExistingSessionId() = runTest {
         // Pre-existing active session
         val existingSession = WorkoutSession(99L, 1L, "Push Day", 1000L, null, null, emptyList())
         workoutHistoryRepository.sessions.add(existingSession)
@@ -378,6 +380,19 @@ class WorkoutEditorViewModelTest {
 
         val state = viewModel.uiState.value
         assertFalse(state.isSaving)
-        assertNotNull(state.errorMessage)
+        assertNull(state.errorMessage)
+
+        // 1. Session in repository must NOT have increased (no new session inserted)
+        assertEquals(1, workoutHistoryRepository.sessions.size)
+
+        // 2. Navigation event must be emitted with existing session ID, exactly once
+        val eventsReceived = mutableListOf<WorkoutEditorEvent>()
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.events.toList(eventsReceived)
+        }
+        assertEquals(listOf(WorkoutEditorEvent.NavigateToActiveWorkout(99L)), eventsReceived)
+        advanceUntilIdle()
+        assertEquals(1, eventsReceived.size)
+        job.cancel()
     }
 }

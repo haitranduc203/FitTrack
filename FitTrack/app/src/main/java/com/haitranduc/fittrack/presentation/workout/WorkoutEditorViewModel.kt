@@ -294,9 +294,8 @@ class WorkoutEditorViewModel @Inject constructor(
                             _events.send(WorkoutEditorEvent.NavigateToActiveWorkout(startResult.sessionId))
                         }
                         is StartWorkoutResult.ActiveSessionExists -> {
-                            _uiState.update {
-                                it.copy(isSaving = false, errorMessage = "A workout is already in progress.")
-                            }
+                            _uiState.update { it.copy(isSaving = false, errorMessage = null) }
+                            _events.send(WorkoutEditorEvent.NavigateToActiveWorkout(startResult.sessionId))
                         }
                         StartWorkoutResult.WorkoutNotFound -> {
                             _uiState.update {

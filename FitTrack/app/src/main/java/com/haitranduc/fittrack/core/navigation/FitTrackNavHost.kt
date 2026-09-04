@@ -225,7 +225,9 @@ fun FitTrackNavHostContent(
                             workoutId = null,
                             onNavigateUp = { navController.navigateUp() },
                             onStartWorkout = { sessionId ->
-                                navController.navigate(FitTrackDestination.activeWorkoutRoute(sessionId))
+                                navController.navigate(FitTrackDestination.activeWorkoutRoute(sessionId)) {
+                                    launchSingleTop = true
+                                }
                             }
                         )
                     }
@@ -236,7 +238,9 @@ fun FitTrackNavHostContent(
                             workoutId = workoutId,
                             onNavigateUp = { navController.navigateUp() },
                             onStartWorkout = { sessionId ->
-                                navController.navigate(FitTrackDestination.activeWorkoutRoute(sessionId))
+                                navController.navigate(FitTrackDestination.activeWorkoutRoute(sessionId)) {
+                                    launchSingleTop = true
+                                }
                             }
                         )
                     }

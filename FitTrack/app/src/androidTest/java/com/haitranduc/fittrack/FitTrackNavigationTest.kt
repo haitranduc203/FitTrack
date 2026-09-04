@@ -14,8 +14,14 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
+import androidx.room.Room
+import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.haitranduc.fittrack.core.database.FitTrackDatabase
+import kotlinx.coroutines.runBlocking
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -335,6 +341,109 @@ class FitTrackNavigationTest {
             if (allChips.size > 1) {
                 composeTestRule.onAllNodesWithText(filterAll).onLast().performClick()
             }
+        }
+    }
+
+    @Test
+    fun test_activeWorkout_backAndResume_resumesExistingSessionWithoutDuplicate() {
+        waitUntilReady()
+
+        val navWorkouts = context.getString(R.string.nav_workouts)
+        val titleWorkouts = context.getString(R.string.title_workouts)
+        val cdCreateWorkout = context.getString(R.string.cd_create_workout)
+        val btnAddExercise = context.getString(R.string.btn_add_exercise)
+        val btnStartWorkout = context.getString(R.string.btn_start_workout)
+        val titleActiveWorkout = context.getString(R.string.title_active_workout)
+        val cdNavigateUp = context.getString(R.string.cd_navigate_up)
+        val cdSetDone = context.getString(R.string.cd_set_done)
+        val btnFinishWorkout = context.getString(R.string.btn_finish_workout)
+        val titleHistoryDetail = context.getString(R.string.title_history_detail)
+
+        val testDb = Room.databaseBuilder(
+            context,
+            FitTrackDatabase::class.java,
+            "fittrack.db"
+        ).build()
+
+        try {
+            // 1. Navigate to Workouts tab
+            composeTestRule.onAllNodesWithText(navWorkouts).onLast().performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(titleWorkouts).fetchSemanticsNodes().isNotEmpty()
+            }
+
+            // 2. Create a workout template
+            val uniqueWorkoutName = "Resume Test " + System.currentTimeMillis()
+            composeTestRule.onNodeWithContentDescription(cdCreateWorkout).performClick()
+            composeTestRule.onNode(hasSetTextAction()).performTextReplacement(uniqueWorkoutName)
+            composeTestRule.onNodeWithText(btnAddExercise).performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText("3/4 sit-up").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText("3/4 sit-up").performClick()
+
+            // 3. Start workout
+            composeTestRule.onNodeWithText(btnStartWorkout).performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(titleActiveWorkout).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(titleActiveWorkout).assertIsDisplayed()
+
+            // 4. Record initial session ID from repository
+            val firstActiveSession = runBlocking {
+                testDb.workoutSessionDao().getActiveSession()
+            }
+            val firstSessionId = firstActiveSession?.id ?: -1L
+            assertTrue("Session ID must be positive", firstSessionId > 0L)
+
+            // 5. Back out of Active Workout
+            composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
+            composeTestRule.waitForIdle()
+
+            // 6. Click Start again (from editor or reopen if back to workouts)
+            val startNodes = composeTestRule.onAllNodesWithText(btnStartWorkout).fetchSemanticsNodes()
+            if (startNodes.isEmpty()) {
+                composeTestRule.onNodeWithText(uniqueWorkoutName).performClick()
+                composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                    composeTestRule.onAllNodesWithText(btnStartWorkout).fetchSemanticsNodes().isNotEmpty()
+                }
+            }
+            composeTestRule.onNodeWithText(btnStartWorkout).performClick()
+
+            // 7. Verify navigated to Active Workout
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(titleActiveWorkout).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(titleActiveWorkout).assertIsDisplayed()
+
+            // 8. Confirm navigation resumed the exact same session ID
+            val secondActiveSession = runBlocking {
+                testDb.workoutSessionDao().getActiveSession()
+            }
+            assertEquals(firstSessionId, secondActiveSession?.id)
+
+            // 9. Confirm database still has only ONE unfinished session
+            val cursor = testDb.query(
+                SimpleSQLiteQuery("SELECT COUNT(*) FROM workout_sessions WHERE finishedAt IS NULL")
+            )
+            cursor.moveToFirst()
+            val unfinishedCount = cursor.getInt(0)
+            cursor.close()
+            assertEquals(1, unfinishedCount)
+
+            // 10. Clean up: complete set and finish so session is closed
+            composeTestRule.onNodeWithContentDescription(cdSetDone).performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText("1").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(btnFinishWorkout).performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(titleHistoryDetail).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
+            composeTestRule.waitForIdle()
+        } finally {
+            testDb.close()
         }
     }
 }
