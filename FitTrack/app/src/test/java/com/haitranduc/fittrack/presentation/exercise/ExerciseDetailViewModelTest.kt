@@ -74,9 +74,10 @@ class ExerciseDetailViewModelTest {
         assertNotNull(state.exercise)
         assertEquals("Barbell Bench Press", state.exercise?.name)
         assertNull(state.errorMessage)
-        assertFalse(state.isFavorite)
+        assertEquals(false, state.isFavorite)
 
         collectJob.cancel()
+
     }
 
     @Test
@@ -150,7 +151,7 @@ class ExerciseDetailViewModelTest {
         }
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.isFavorite)
+        assertEquals(true, viewModel.uiState.value.isFavorite)
 
         collectJob.cancel()
     }
@@ -163,22 +164,23 @@ class ExerciseDetailViewModelTest {
         }
         advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.isFavorite)
+        assertEquals(false, viewModel.uiState.value.isFavorite)
 
         viewModel.onToggleFavorite()
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.isFavorite)
+        assertEquals(true, viewModel.uiState.value.isFavorite)
         assertEquals(1, favoriteRepository.setFavoriteCallCount)
 
         viewModel.onToggleFavorite()
         advanceUntilIdle()
 
-        assertFalse(viewModel.uiState.value.isFavorite)
+        assertEquals(false, viewModel.uiState.value.isFavorite)
         assertEquals(2, favoriteRepository.setFavoriteCallCount)
 
         collectJob.cancel()
     }
+
 
     @Test
     fun toggleFavorite_failure_surfacesErrorMessage() = runTest(testDispatcher) {
@@ -198,6 +200,66 @@ class ExerciseDetailViewModelTest {
         viewModel.onClearFavoriteError()
         advanceUntilIdle()
         assertNull(viewModel.uiState.value.favoriteErrorMessage)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun favoriteObservationFailure_surfacesFavoriteError_andDoesNotConfirmNotFavorite() = runTest(testDispatcher) {
+        favoriteRepository.errorToEmit = DataError.Database(RuntimeException("Favorite read failed"))
+        val viewModel = createViewModel("ex_bench")
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertNotNull(state.exercise)
+        assertNull("Failed observation must not confirm not-favorite", state.isFavorite)
+        assertEquals(UiText.StringResource(R.string.error_database), state.favoriteErrorMessage)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun retry_afterFavoriteObservationFailure_recoversFavoriteState() = runTest(testDispatcher) {
+        favoriteRepository.errorToEmit = DataError.Database(RuntimeException("Favorite read failed"))
+        val viewModel = createViewModel("ex_bench")
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        assertEquals(UiText.StringResource(R.string.error_database), viewModel.uiState.value.favoriteErrorMessage)
+        assertNull(viewModel.uiState.value.isFavorite)
+
+        // Clear error and retry
+        favoriteRepository.errorToEmit = null
+        favoriteRepository.favoriteIdsFlow.value = setOf("ex_bench")
+        viewModel.retry()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertNull(state.favoriteErrorMessage)
+        assertEquals(true, state.isFavorite)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun toggleFavorite_duplicateTaps_ignoresSubsequentTapsWhileUpdating() = runTest(testDispatcher) {
+        val viewModel = createViewModel("ex_bench")
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        // Call toggle twice in the same tick before advanceUntilIdle
+        viewModel.onToggleFavorite()
+        viewModel.onToggleFavorite()
+        advanceUntilIdle()
+
+        assertEquals(1, favoriteRepository.setFavoriteCallCount)
 
         collectJob.cancel()
     }

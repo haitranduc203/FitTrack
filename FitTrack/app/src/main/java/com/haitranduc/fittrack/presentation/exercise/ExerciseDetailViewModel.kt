@@ -56,16 +56,24 @@ class ExerciseDetailViewModel @Inject constructor(
                                 if (exerciseResult.data == null) {
                                     ExerciseDetailUiState(isLoading = false, isMissing = true)
                                 } else {
-                                    val isFav = when (favoriteIdsResult) {
-                                        is DataResult.Success -> favoriteIdsResult.data.contains(id)
-                                        is DataResult.Failure -> false
+                                    val isFav: Boolean?
+                                    val favErrorToSurface: UiText?
+                                    when (favoriteIdsResult) {
+                                        is DataResult.Success -> {
+                                            isFav = favoriteIdsResult.data.contains(id)
+                                            favErrorToSurface = favError
+                                        }
+                                        is DataResult.Failure -> {
+                                            isFav = null
+                                            favErrorToSurface = favError ?: favoriteIdsResult.error.toUiText()
+                                        }
                                     }
                                     ExerciseDetailUiState(
                                         isLoading = false,
                                         exercise = exerciseResult.data,
                                         isFavorite = isFav,
                                         isTogglingFavorite = toggling,
-                                        favoriteErrorMessage = favError
+                                        favoriteErrorMessage = favErrorToSurface
                                     )
                                 }
                             }
@@ -92,22 +100,29 @@ class ExerciseDetailViewModel @Inject constructor(
 
     fun onToggleFavorite() {
         val exerciseId = uiState.value.exercise?.id ?: return
+        val isCurrentlyFav = uiState.value.isFavorite ?: return
         if (isTogglingFavorite.value) return
 
         isTogglingFavorite.value = true
         favoriteErrorMessage.value = null
 
         viewModelScope.launch {
-            val isCurrentlyFav = uiState.value.isFavorite
-            when (val res = favoriteExerciseRepository.setFavorite(exerciseId, !isCurrentlyFav)) {
-                is DataResult.Success -> {
-                    // Handled reactively via Flow
+            try {
+                when (val res = favoriteExerciseRepository.setFavorite(exerciseId, !isCurrentlyFav)) {
+                    is DataResult.Success -> {
+                        // Handled reactively via Flow
+                    }
+                    is DataResult.Failure -> {
+                        favoriteErrorMessage.value = res.error.toUiText()
+                    }
                 }
-                is DataResult.Failure -> {
-                    favoriteErrorMessage.value = res.error.toUiText()
-                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: java.lang.Error) {
+                throw e
+            } finally {
+                isTogglingFavorite.value = false
             }
-            isTogglingFavorite.value = false
         }
     }
 
@@ -116,6 +131,7 @@ class ExerciseDetailViewModel @Inject constructor(
     }
 
     fun retry() {
+        favoriteErrorMessage.value = null
         retryTrigger.value++
     }
 }

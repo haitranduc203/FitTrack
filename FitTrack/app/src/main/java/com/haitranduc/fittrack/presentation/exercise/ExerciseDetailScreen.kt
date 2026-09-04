@@ -98,14 +98,14 @@ fun ExerciseDetailContent(
                     if (exercise != null) {
                         IconButton(
                             onClick = onToggleFavorite,
-                            enabled = !uiState.isTogglingFavorite
+                            enabled = !uiState.isTogglingFavorite && uiState.isFavorite != null
                         ) {
                             Icon(
-                                imageVector = if (uiState.isFavorite) FitTrackIcons.Star else FitTrackIcons.StarBorder,
+                                imageVector = if (uiState.isFavorite == true) FitTrackIcons.Star else FitTrackIcons.StarBorder,
                                 contentDescription = stringResource(
-                                    if (uiState.isFavorite) R.string.cd_unfavorite_exercise else R.string.cd_favorite_exercise
+                                    if (uiState.isFavorite == true) R.string.cd_unfavorite_exercise else R.string.cd_favorite_exercise
                                 ),
-                                tint = if (uiState.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = if (uiState.isFavorite == true) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
