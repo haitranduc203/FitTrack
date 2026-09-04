@@ -193,6 +193,12 @@
     <string name="history_duration_48m">48 mins</string>
     <string name="history_duration_42m">42 mins</string>
 
+    <!-- M4 Lifetime Statistics -->
+    <string name="stat_workouts">Workouts</string>
+    <string name="stat_sets">Sets</string>
+    <string name="stat_time">Time</string>
+    <string name="stat_placeholder">-</string>
+
     <!-- M4 Settings & Theme -->
     <string name="title_settings">Settings</string>
     <string name="nav_settings">Settings</string>

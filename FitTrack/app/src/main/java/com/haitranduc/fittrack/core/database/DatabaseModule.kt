@@ -65,6 +65,12 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideStatisticsDao(database: FitTrackDatabase): com.haitranduc.fittrack.data.local.dao.StatisticsDao {
+        return database.statisticsDao()
+    }
+
+    @Provides
+    @Singleton
     fun provideAssetSeedReader(@ApplicationContext context: Context): AssetSeedReader {
         return AndroidAssetSeedReader(context)
     }

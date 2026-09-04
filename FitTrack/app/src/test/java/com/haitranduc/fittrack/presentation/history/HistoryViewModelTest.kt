@@ -4,6 +4,7 @@ import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.WorkoutSession
 import com.haitranduc.fittrack.domain.repository.DataError
 import com.haitranduc.fittrack.presentation.util.UiText
+import com.haitranduc.fittrack.testing.FakeStatisticsRepository
 import com.haitranduc.fittrack.testing.FakeWorkoutHistoryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -26,6 +27,7 @@ class HistoryViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var historyRepository: FakeWorkoutHistoryRepository
+    private lateinit var statisticsRepository: FakeStatisticsRepository
 
     private val sampleSession1 = WorkoutSession(
         id = 1L,
@@ -51,6 +53,7 @@ class HistoryViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         historyRepository = FakeWorkoutHistoryRepository()
+        statisticsRepository = FakeStatisticsRepository()
     }
 
     @After
@@ -60,13 +63,14 @@ class HistoryViewModelTest {
 
     @Test
     fun observeHistory_empty_showsEmptySessions() = runTest {
-        val viewModel = HistoryViewModel(historyRepository)
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
         assertFalse(state.isLoading)
         assertNull(state.errorMessage)
         assertTrue(state.sessions.isEmpty())
+        assertEquals(0L, state.totalWorkouts)
     }
 
     @Test
@@ -74,7 +78,7 @@ class HistoryViewModelTest {
         historyRepository.sessions.addAll(listOf(sampleSession1, sampleSession2))
         historyRepository.refreshFlow()
 
-        val viewModel = HistoryViewModel(historyRepository)
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -89,7 +93,7 @@ class HistoryViewModelTest {
     fun observeHistory_failure_showsErrorMessage() = runTest {
         historyRepository.observeHistoryError = DataError.Database(RuntimeException("DB Read Error"))
 
-        val viewModel = HistoryViewModel(historyRepository)
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -99,9 +103,41 @@ class HistoryViewModelTest {
     }
 
     @Test
+    fun observeTotalWorkouts_empty_showsZero() = runTest {
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(0L, state.totalWorkouts)
+    }
+
+    @Test
+    fun observeTotalWorkouts_success_updatesTotalWorkouts() = runTest {
+        statisticsRepository.setTotalWorkouts(5L)
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(5L, state.totalWorkouts)
+    }
+
+    @Test
+    fun observeTotalWorkouts_failure_showsErrorMessage() = runTest {
+        statisticsRepository.observeTotalWorkoutsError = DataError.Database(RuntimeException("DB Read Error"))
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
+    }
+
+    @Test
     fun retry_clearsErrorAndReloads() = runTest {
         historyRepository.observeHistoryError = DataError.Database(RuntimeException("DB Read Error"))
-        val viewModel = HistoryViewModel(historyRepository)
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
         advanceUntilIdle()
 
         assertEquals(UiText.StringResource(R.string.error_database), viewModel.uiState.value.errorMessage)

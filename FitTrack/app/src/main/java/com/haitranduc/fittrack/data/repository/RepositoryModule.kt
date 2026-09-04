@@ -37,4 +37,10 @@ abstract class RepositoryModule {
     abstract fun bindWorkoutHistoryRepository(
         impl: WorkoutHistoryRepositoryImpl
     ): WorkoutHistoryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindStatisticsRepository(
+        impl: StatisticsRepositoryImpl
+    ): com.haitranduc.fittrack.domain.repository.StatisticsRepository
 }

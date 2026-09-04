@@ -6,6 +6,7 @@ import androidx.room.TypeConverters
 import com.haitranduc.fittrack.data.local.dao.ExerciseDao
 import com.haitranduc.fittrack.data.local.dao.FavoriteExerciseDao
 import com.haitranduc.fittrack.data.local.dao.SetLogDao
+import com.haitranduc.fittrack.data.local.dao.StatisticsDao
 import com.haitranduc.fittrack.data.local.dao.WorkoutDao
 import com.haitranduc.fittrack.data.local.dao.WorkoutSessionDao
 import com.haitranduc.fittrack.data.local.entity.ExerciseEntity
@@ -34,4 +35,5 @@ abstract class FitTrackDatabase : RoomDatabase() {
     abstract fun workoutSessionDao(): WorkoutSessionDao
     abstract fun setLogDao(): SetLogDao
     abstract fun favoriteExerciseDao(): FavoriteExerciseDao
+    abstract fun statisticsDao(): StatisticsDao
 }
