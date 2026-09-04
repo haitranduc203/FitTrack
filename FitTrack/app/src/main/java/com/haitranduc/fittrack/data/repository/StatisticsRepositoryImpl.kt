@@ -18,18 +18,30 @@ class StatisticsRepositoryImpl @Inject constructor(
     override fun observeTotalWorkouts(): Flow<DataResult<Long>> {
         return statisticsDao.observeTotalWorkouts()
             .map<Long, DataResult<Long>> { count -> DataResult.Success(count) }
-            .catch { e -> emit(DataResult.Failure(DataError.Database(e))) }
+            .catch { e ->
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                if (e is java.lang.Error) throw e
+                emit(DataResult.Failure(DataError.Database(e)))
+            }
     }
 
     override fun observeTotalCompletedSets(): Flow<DataResult<Long>> {
         return statisticsDao.observeTotalCompletedSets()
             .map<Long, DataResult<Long>> { count -> DataResult.Success(count) }
-            .catch { e -> emit(DataResult.Failure(DataError.Database(e))) }
+            .catch { e ->
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                if (e is java.lang.Error) throw e
+                emit(DataResult.Failure(DataError.Database(e)))
+            }
     }
 
     override fun observeTotalTrainingTimeSeconds(): Flow<DataResult<Long>> {
         return statisticsDao.observeTotalTrainingTimeSeconds()
             .map<Long, DataResult<Long>> { seconds -> DataResult.Success(seconds) }
-            .catch { e -> emit(DataResult.Failure(DataError.Database(e))) }
+            .catch { e ->
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                if (e is java.lang.Error) throw e
+                emit(DataResult.Failure(DataError.Database(e)))
+            }
     }
 }
