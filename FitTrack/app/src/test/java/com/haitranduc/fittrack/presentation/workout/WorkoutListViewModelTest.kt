@@ -186,4 +186,3 @@ class WorkoutListViewModelTest {
         return (result as com.haitranduc.fittrack.domain.repository.DataResult.Success<List<Workout>>).data
     }
 }
-
