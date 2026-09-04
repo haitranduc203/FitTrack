@@ -376,4 +376,63 @@ object FitTrackIcons {
             }
         }.build()
     }
+
+    val Settings: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Settings",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(19.14f, 12.94f)
+                curveTo(19.18f, 12.63f, 19.2f, 12.32f, 19.2f, 12f)
+                curveTo(19.2f, 11.68f, 19.18f, 11.37f, 19.14f, 11.06f)
+                lineTo(21.41f, 9.29f)
+                curveTo(21.62f, 9.13f, 21.67f, 8.83f, 21.53f, 8.59f)
+                lineTo(19.38f, 4.86f)
+                curveTo(19.25f, 4.62f, 18.96f, 4.53f, 18.72f, 4.62f)
+                lineTo(16.05f, 5.7f)
+                curveTo(15.49f, 5.27f, 14.88f, 4.93f, 14.22f, 4.69f)
+                lineTo(13.82f, 1.85f)
+                curveTo(13.78f, 1.59f, 13.55f, 1.4f, 13.29f, 1.4f)
+                lineTo(8.97f, 1.4f)
+                curveTo(8.71f, 1.4f, 8.48f, 1.59f, 8.44f, 1.85f)
+                lineTo(8.04f, 4.69f)
+                curveTo(7.38f, 4.93f, 6.77f, 5.28f, 6.21f, 5.7f)
+                lineTo(3.54f, 4.62f)
+                curveTo(3.3f, 4.53f, 3.01f, 4.62f, 2.88f, 4.86f)
+                lineTo(0.73f, 8.59f)
+                curveTo(0.59f, 8.83f, 0.64f, 9.13f, 0.85f, 9.29f)
+                lineTo(3.12f, 11.06f)
+                curveTo(3.08f, 11.37f, 3.06f, 11.69f, 3.06f, 12f)
+                curveTo(3.06f, 12.31f, 3.08f, 12.63f, 3.12f, 12.94f)
+                lineTo(0.85f, 14.71f)
+                curveTo(0.64f, 14.87f, 0.59f, 15.17f, 0.73f, 15.41f)
+                lineTo(2.88f, 19.14f)
+                curveTo(3.01f, 19.38f, 3.3f, 19.47f, 3.54f, 19.38f)
+                lineTo(6.21f, 18.3f)
+                curveTo(6.77f, 18.73f, 7.38f, 19.07f, 8.04f, 19.31f)
+                lineTo(8.44f, 22.15f)
+                curveTo(8.48f, 22.41f, 8.71f, 22.6f, 8.97f, 22.6f)
+                lineTo(13.29f, 22.6f)
+                curveTo(13.55f, 22.6f, 13.78f, 22.41f, 13.82f, 22.15f)
+                lineTo(14.22f, 19.31f)
+                curveTo(14.88f, 19.07f, 15.49f, 18.73f, 16.05f, 18.3f)
+                lineTo(18.72f, 19.38f)
+                curveTo(18.96f, 19.47f, 19.25f, 19.38f, 19.38f, 19.14f)
+                lineTo(21.53f, 15.41f)
+                curveTo(21.67f, 15.17f, 21.62f, 14.87f, 21.41f, 14.71f)
+                lineTo(19.14f, 12.94f)
+                close()
+                moveTo(12f, 15.5f)
+                curveTo(10.07f, 15.5f, 8.5f, 13.93f, 8.5f, 12f)
+                curveTo(8.5f, 10.07f, 10.07f, 8.5f, 12f, 8.5f)
+                curveTo(13.93f, 8.5f, 15.5f, 10.07f, 15.5f, 12f)
+                curveTo(15.5f, 13.93f, 13.93f, 15.5f, 12f, 15.5f)
+                close()
+            }
+        }.build()
+    }
 }

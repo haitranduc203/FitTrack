@@ -79,9 +79,11 @@ class FitTrackNavigationTest {
         val navExercises = context.getString(R.string.nav_exercises)
         val navWorkouts = context.getString(R.string.nav_workouts)
         val navHistory = context.getString(R.string.nav_history)
+        val navSettings = context.getString(R.string.nav_settings)
         val titleExercises = context.getString(R.string.title_exercises)
         val titleWorkouts = context.getString(R.string.title_workouts)
         val titleHistory = context.getString(R.string.title_history)
+        val titleSettings = context.getString(R.string.title_settings)
 
         // 1. Initially on Exercises destination
         composeTestRule.onAllNodesWithText(titleExercises).onFirst().assertIsDisplayed()
@@ -94,7 +96,11 @@ class FitTrackNavigationTest {
         composeTestRule.onAllNodesWithText(navHistory).onLast().performClick()
         composeTestRule.onAllNodesWithText(titleHistory).onFirst().assertIsDisplayed()
 
-        // 4. Return to Exercises via bottom bar
+        // 4. Navigate to Settings via bottom bar
+        composeTestRule.onAllNodesWithText(navSettings).onLast().performClick()
+        composeTestRule.onAllNodesWithText(titleSettings).onFirst().assertIsDisplayed()
+
+        // 5. Return to Exercises via bottom bar
         composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
         composeTestRule.onAllNodesWithText(titleExercises).onFirst().assertIsDisplayed()
     }
@@ -445,5 +451,42 @@ class FitTrackNavigationTest {
         } finally {
             testDb.close()
         }
+    }
+
+    @Test
+    fun test_settings_themeSelection_persistsAcrossRecreation() {
+        waitUntilReady()
+
+        val navSettings = context.getString(R.string.nav_settings)
+        val titleSettings = context.getString(R.string.title_settings)
+        val themeDark = context.getString(R.string.theme_dark)
+        val themeSystem = context.getString(R.string.theme_system)
+        val themeLight = context.getString(R.string.theme_light)
+
+        // 1. Navigate to Settings via bottom bar
+        composeTestRule.onAllNodesWithText(navSettings).onLast().performClick()
+        composeTestRule.onAllNodesWithText(titleSettings).onFirst().assertIsDisplayed()
+
+        // 2. Verify all theme options are displayed
+        composeTestRule.onNodeWithText(themeSystem).assertIsDisplayed()
+        composeTestRule.onNodeWithText(themeLight).assertIsDisplayed()
+        composeTestRule.onNodeWithText(themeDark).assertIsDisplayed()
+
+        // 3. Select Dark theme
+        composeTestRule.onNodeWithText(themeDark).performClick()
+        composeTestRule.waitForIdle()
+
+        // 4. Recreate Activity
+        composeTestRule.activityRule.scenario.recreate()
+        composeTestRule.waitForIdle()
+
+        // 5. Verify Settings still shows Dark selected after recreation
+        composeTestRule.onAllNodesWithText(navSettings).onLast().performClick()
+        composeTestRule.onAllNodesWithText(titleSettings).onFirst().assertIsDisplayed()
+        composeTestRule.onNodeWithText(themeDark).assertIsDisplayed()
+
+        // 6. Reset to System Default for test hygiene
+        composeTestRule.onNodeWithText(themeSystem).performClick()
+        composeTestRule.waitForIdle()
     }
 }

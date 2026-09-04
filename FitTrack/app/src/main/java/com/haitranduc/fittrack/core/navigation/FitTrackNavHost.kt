@@ -34,6 +34,7 @@ import com.haitranduc.fittrack.presentation.exercise.ExerciseDetailScreen
 import com.haitranduc.fittrack.presentation.exercise.ExerciseListScreen
 import com.haitranduc.fittrack.presentation.history.HistoryDetailScreen
 import com.haitranduc.fittrack.presentation.history.HistoryScreen
+import com.haitranduc.fittrack.presentation.settings.SettingsScreen
 import com.haitranduc.fittrack.presentation.startup.FitTrackViewModel
 import com.haitranduc.fittrack.presentation.startup.StartupUiState
 import com.haitranduc.fittrack.presentation.workout.WorkoutEditorScreen
@@ -115,7 +116,8 @@ fun FitTrackNavHostContent(
             val topLevelRoutes = setOf(
                 FitTrackDestination.EXERCISES,
                 FitTrackDestination.WORKOUTS,
-                FitTrackDestination.HISTORY
+                FitTrackDestination.HISTORY,
+                FitTrackDestination.SETTINGS
             )
 
             val showBottomBar = currentRoute in topLevelRoutes
@@ -183,6 +185,26 @@ fun FitTrackNavHostContent(
                                     )
                                 },
                                 label = { Text(text = stringResource(R.string.nav_history)) }
+                            )
+
+                            NavigationBarItem(
+                                selected = currentRoute == FitTrackDestination.SETTINGS,
+                                onClick = {
+                                    navController.navigate(FitTrackDestination.SETTINGS) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                icon = {
+                                    Icon(
+                                        imageVector = FitTrackIcons.Settings,
+                                        contentDescription = stringResource(R.string.nav_settings)
+                                    )
+                                },
+                                label = { Text(text = stringResource(R.string.nav_settings)) }
                             )
                         }
                     }
@@ -270,6 +292,10 @@ fun FitTrackNavHostContent(
                         HistoryDetailScreen(
                             onNavigateUp = { navController.navigateUp() }
                         )
+                    }
+
+                    composable(FitTrackDestination.SETTINGS) {
+                        SettingsScreen()
                     }
                 }
             }
