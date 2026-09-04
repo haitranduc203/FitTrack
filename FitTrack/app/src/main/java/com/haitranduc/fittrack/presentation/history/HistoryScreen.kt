@@ -2,6 +2,7 @@ package com.haitranduc.fittrack.presentation.history
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,8 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -22,23 +25,45 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.core.designsystem.theme.FitTrackTheme
+import com.haitranduc.fittrack.domain.model.WorkoutSession
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+@Composable
+fun HistoryScreen(
+    onSessionClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: HistoryViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    HistoryContent(
+        uiState = uiState,
+        onSessionClick = onSessionClick,
+        onRetry = viewModel::onRetry,
+        modifier = modifier
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen(
-    onSessionClick: (String) -> Unit,
+fun HistoryContent(
+    uiState: HistoryUiState,
+    onSessionClick: (Long) -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val sessions = HistoryMockData.sessions
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -64,90 +89,129 @@ fun HistoryScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (sessions.isEmpty()) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
+            when {
+                uiState.isLoading -> {
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                            .fillMaxSize()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = stringResource(R.string.empty_history),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        CircularProgressIndicator()
                     }
                 }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(sessions, key = { it.id }) { session ->
-                        Card(
+                uiState.errorMessage != null -> {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onSessionClick(session.id) },
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface
-                            ),
-                            shape = RoundedCornerShape(14.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = stringResource(session.workoutNameRes),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.secondaryContainer,
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text(
-                                            text = stringResource(session.durationRes),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = stringResource(session.dateRes),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.label_exercises_count, session.exercises.size),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
+                            Text(
+                                text = uiState.errorMessage,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Button(onClick = onRetry) {
+                                Text(text = stringResource(R.string.action_retry))
                             }
                         }
                     }
-                    item {
-                        Spacer(modifier = Modifier.height(16.dp))
+                }
+                uiState.sessions.isEmpty() -> {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = stringResource(R.string.empty_history),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(uiState.sessions, key = { it.id }) { session ->
+                            val durationText = formatDuration(session.durationSeconds)
+                            val dateText = formatDate(session.finishedAt ?: session.startedAt)
+
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onSessionClick(session.id) },
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surface
+                                ),
+                                shape = RoundedCornerShape(14.dp),
+                                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = session.workoutNameSnapshot,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.secondaryContainer,
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Text(
+                                                text = durationText,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = dateText,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        item {
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
                     }
                 }
             }
@@ -155,10 +219,65 @@ fun HistoryScreen(
     }
 }
 
-@Preview(showBackground = true, name = "History Screen")
+private fun formatDuration(durationSeconds: Long?): String {
+    if (durationSeconds == null || durationSeconds <= 0L) return "0s"
+    val minutes = durationSeconds / 60
+    val seconds = durationSeconds % 60
+    return if (minutes > 0) {
+        "${minutes}m ${seconds}s"
+    } else {
+        "${seconds}s"
+    }
+}
+
+private fun formatDate(timestamp: Long): String {
+    if (timestamp <= 0L) return ""
+    val formatter = SimpleDateFormat("MMM d, yyyy · HH:mm", Locale.getDefault())
+    return formatter.format(Date(timestamp))
+}
+
+@Preview(showBackground = true, name = "History Screen - Populated")
 @Composable
-private fun HistoryScreenPreview() {
+private fun HistoryContentPopulatedPreview() {
     FitTrackTheme {
-        HistoryScreen(onSessionClick = {})
+        HistoryContent(
+            uiState = HistoryUiState(
+                isLoading = false,
+                sessions = listOf(
+                    WorkoutSession(
+                        id = 1L,
+                        workoutId = 10L,
+                        workoutNameSnapshot = "Push Day",
+                        startedAt = 1725400000000L,
+                        finishedAt = 1725402500000L,
+                        durationSeconds = 2500L,
+                        sets = emptyList()
+                    ),
+                    WorkoutSession(
+                        id = 2L,
+                        workoutId = null,
+                        workoutNameSnapshot = "Pull Day",
+                        startedAt = 1725300000000L,
+                        finishedAt = 1725303000000L,
+                        durationSeconds = 3000L,
+                        sets = emptyList()
+                    )
+                )
+            ),
+            onSessionClick = {},
+            onRetry = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "History Screen - Empty")
+@Composable
+private fun HistoryContentEmptyPreview() {
+    FitTrackTheme {
+        HistoryContent(
+            uiState = HistoryUiState(isLoading = false, sessions = emptyList()),
+            onSessionClick = {},
+            onRetry = {}
+        )
     }
 }

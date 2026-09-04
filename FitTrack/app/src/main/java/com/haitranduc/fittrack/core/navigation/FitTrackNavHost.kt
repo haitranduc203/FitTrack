@@ -262,10 +262,8 @@ fun FitTrackNavHostContent(
                         )
                     }
 
-                    composable(FitTrackDestination.HISTORY_DETAIL) { backStackEntry ->
-                        val sessionId = backStackEntry.arguments?.getString("sessionId") ?: ""
+                    composable(FitTrackDestination.HISTORY_DETAIL) {
                         HistoryDetailScreen(
-                            sessionId = sessionId,
                             onNavigateUp = { navController.navigateUp() }
                         )
                     }

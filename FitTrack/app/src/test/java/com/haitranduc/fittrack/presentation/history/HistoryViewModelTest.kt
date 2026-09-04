@@ -1,0 +1,120 @@
+package com.haitranduc.fittrack.presentation.history
+
+import com.haitranduc.fittrack.domain.model.WorkoutSession
+import com.haitranduc.fittrack.domain.repository.DataError
+import com.haitranduc.fittrack.testing.FakeWorkoutHistoryRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class HistoryViewModelTest {
+
+    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var historyRepository: FakeWorkoutHistoryRepository
+
+    private val sampleSession1 = WorkoutSession(
+        id = 1L,
+        workoutId = 100L,
+        workoutNameSnapshot = "Push Day",
+        startedAt = 1000L,
+        finishedAt = 2000L,
+        durationSeconds = 1000L,
+        sets = emptyList()
+    )
+
+    private val sampleSession2 = WorkoutSession(
+        id = 2L,
+        workoutId = null, // Template was deleted
+        workoutNameSnapshot = "Deleted Template Workout",
+        startedAt = 3000L,
+        finishedAt = 4500L,
+        durationSeconds = 1500L,
+        sets = emptyList()
+    )
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        historyRepository = FakeWorkoutHistoryRepository()
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun observeHistory_empty_showsEmptySessions() = runTest {
+        val viewModel = HistoryViewModel(historyRepository)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertNull(state.errorMessage)
+        assertTrue(state.sessions.isEmpty())
+    }
+
+    @Test
+    fun observeHistory_success_loadsFinishedSessionsIncludingDeletedTemplates() = runTest {
+        historyRepository.sessions.addAll(listOf(sampleSession1, sampleSession2))
+        historyRepository.refreshFlow()
+
+        val viewModel = HistoryViewModel(historyRepository)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertNull(state.errorMessage)
+        assertEquals(2, state.sessions.size)
+        assertEquals("Push Day", state.sessions[0].workoutNameSnapshot)
+        assertEquals("Deleted Template Workout", state.sessions[1].workoutNameSnapshot)
+    }
+
+    @Test
+    fun observeHistory_failure_showsErrorMessage() = runTest {
+        historyRepository.observeHistoryError = DataError.Database(RuntimeException("DB Read Error"))
+
+        val viewModel = HistoryViewModel(historyRepository)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertNotNull(state.errorMessage)
+        assertTrue(state.sessions.isEmpty())
+    }
+
+    @Test
+    fun retry_clearsErrorAndReloads() = runTest {
+        historyRepository.observeHistoryError = DataError.Database(RuntimeException("DB Read Error"))
+        val viewModel = HistoryViewModel(historyRepository)
+        advanceUntilIdle()
+
+        assertNotNull(viewModel.uiState.value.errorMessage)
+
+        // Clear error and add data
+        historyRepository.observeHistoryError = null
+        historyRepository.sessions.add(sampleSession1)
+        historyRepository.refreshFlow()
+
+        viewModel.onRetry()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertNull(state.errorMessage)
+        assertEquals(1, state.sessions.size)
+    }
+}
