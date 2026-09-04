@@ -64,6 +64,42 @@ class WorkoutHistoryRepositoryImpl @Inject constructor(
             }
     }
 
+    override suspend fun getActiveSession(): DataResult<WorkoutSession?> {
+        return try {
+            val entity = workoutSessionDao.getActiveSession()
+            if (entity == null) {
+                DataResult.Success(null)
+            } else {
+                val sets = setLogDao.getSetLogsForSession(entity.id)
+                DataResult.Success(WorkoutSessionWithSets(entity, sets).toDomain())
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: SQLiteException) {
+            DataResult.Failure(DataError.Database(e))
+        } catch (e: Exception) {
+            DataResult.Failure(DataError.Unknown(e))
+        }
+    }
+
+    override suspend fun getSession(id: Long): DataResult<WorkoutSession?> {
+        return try {
+            val entity = workoutSessionDao.getSessionById(id)
+            if (entity == null) {
+                DataResult.Success(null)
+            } else {
+                val sets = setLogDao.getSetLogsForSession(id)
+                DataResult.Success(WorkoutSessionWithSets(entity, sets).toDomain())
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: SQLiteException) {
+            DataResult.Failure(DataError.Database(e))
+        } catch (e: Exception) {
+            DataResult.Failure(DataError.Unknown(e))
+        }
+    }
+
     override suspend fun insertSession(session: WorkoutSession): DataResult<Long> {
         return try {
             val id = workoutSessionDao.insertSession(session.toEntity())
