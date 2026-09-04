@@ -3,6 +3,7 @@ package com.haitranduc.fittrack.presentation.workout
 import androidx.lifecycle.SavedStateHandle
 import com.haitranduc.fittrack.domain.model.Exercise
 import com.haitranduc.fittrack.domain.model.Workout
+import com.haitranduc.fittrack.domain.model.WorkoutSession
 import com.haitranduc.fittrack.domain.repository.DataError
 import com.haitranduc.fittrack.domain.usecase.SaveWorkoutUseCase
 import com.haitranduc.fittrack.testing.FakeExerciseRepository
@@ -11,6 +12,7 @@ import com.haitranduc.fittrack.testing.FakeWorkoutRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -30,9 +32,11 @@ class WorkoutEditorViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var workoutRepository: FakeWorkoutRepository
+    private lateinit var workoutHistoryRepository: com.haitranduc.fittrack.testing.FakeWorkoutHistoryRepository
     private lateinit var exerciseRepository: FakeExerciseRepository
     private lateinit var timeProvider: FakeTimeProvider
     private lateinit var saveWorkoutUseCase: SaveWorkoutUseCase
+    private lateinit var startWorkoutUseCase: com.haitranduc.fittrack.domain.usecase.StartWorkoutUseCase
 
     private val exerciseA = Exercise(
         id = "e1",
@@ -71,9 +75,15 @@ class WorkoutEditorViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         workoutRepository = FakeWorkoutRepository()
+        workoutHistoryRepository = com.haitranduc.fittrack.testing.FakeWorkoutHistoryRepository()
         exerciseRepository = FakeExerciseRepository()
         timeProvider = FakeTimeProvider(1000L)
         saveWorkoutUseCase = SaveWorkoutUseCase(workoutRepository, timeProvider)
+        startWorkoutUseCase = com.haitranduc.fittrack.domain.usecase.StartWorkoutUseCase(
+            workoutRepository = workoutRepository,
+            workoutHistoryRepository = workoutHistoryRepository,
+            timeProvider = timeProvider
+        )
 
         exerciseRepository.setExercises(listOf(exerciseA, exerciseB, exerciseC))
     }
@@ -91,7 +101,8 @@ class WorkoutEditorViewModelTest {
             savedStateHandle = savedStateHandle,
             workoutRepository = workoutRepository,
             exerciseRepository = exerciseRepository,
-            saveWorkoutUseCase = saveWorkoutUseCase
+            saveWorkoutUseCase = saveWorkoutUseCase,
+            startWorkoutUseCase = startWorkoutUseCase
         )
     }
 
@@ -303,6 +314,66 @@ class WorkoutEditorViewModelTest {
         viewModel.onExerciseSelected(exerciseA)
 
         viewModel.onSaveClicked()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isSaving)
+        assertNotNull(state.errorMessage)
+    }
+
+    @Test
+    fun onStartClicked_validChanges_savesFirstThenStartsWorkoutAndEmitsNavigateToActiveWorkout() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.onNameChanged("Leg Day")
+        viewModel.onExerciseSelected(exerciseA)
+
+        viewModel.onStartClicked()
+        advanceUntilIdle()
+
+        // 1. Saved in repository
+        assertEquals(1, workoutRepository.savedWorkouts.size)
+        val savedId = workoutRepository.savedWorkouts[0].id
+        // 2. Session created in history repository
+        assertEquals(1, workoutHistoryRepository.sessions.size)
+        val session = workoutHistoryRepository.sessions[0]
+        assertEquals(savedId, session.workoutId)
+        // 3. Navigation event emitted
+        val event = viewModel.events.first()
+        assertTrue(event is WorkoutEditorEvent.NavigateToActiveWorkout)
+        assertEquals(session.id, (event as WorkoutEditorEvent.NavigateToActiveWorkout).sessionId)
+    }
+
+    @Test
+    fun onStartClicked_invalidChanges_showsValidationErrorWithoutSavingOrStarting() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        // Blank name, no exercises
+        viewModel.onStartClicked()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertNotNull(state.nameErrorRes)
+        assertNotNull(state.exerciseErrorRes)
+        assertTrue(workoutRepository.savedWorkouts.isEmpty())
+        assertTrue(workoutHistoryRepository.sessions.isEmpty())
+    }
+
+    @Test
+    fun onStartClicked_activeSessionConflict_showsErrorMessageWithoutNavigating() = runTest {
+        // Pre-existing active session
+        val existingSession = WorkoutSession(99L, 1L, "Push Day", 1000L, null, null, emptyList())
+        workoutHistoryRepository.sessions.add(existingSession)
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.onNameChanged("Pull Day")
+        viewModel.onExerciseSelected(exerciseA)
+
+        viewModel.onStartClicked()
         advanceUntilIdle()
 
         val state = viewModel.uiState.value

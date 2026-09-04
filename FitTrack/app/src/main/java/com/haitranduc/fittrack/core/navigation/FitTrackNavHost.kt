@@ -224,8 +224,8 @@ fun FitTrackNavHostContent(
                         WorkoutEditorScreen(
                             workoutId = null,
                             onNavigateUp = { navController.navigateUp() },
-                            onStartWorkout = { _ ->
-                                navController.navigate(FitTrackDestination.ACTIVE_WORKOUT)
+                            onStartWorkout = { sessionId ->
+                                navController.navigate(FitTrackDestination.activeWorkoutRoute(sessionId))
                             }
                         )
                     }
@@ -235,8 +235,8 @@ fun FitTrackNavHostContent(
                         WorkoutEditorScreen(
                             workoutId = workoutId,
                             onNavigateUp = { navController.navigateUp() },
-                            onStartWorkout = { _ ->
-                                navController.navigate(FitTrackDestination.ACTIVE_WORKOUT)
+                            onStartWorkout = { sessionId ->
+                                navController.navigate(FitTrackDestination.activeWorkoutRoute(sessionId))
                             }
                         )
                     }
@@ -244,8 +244,12 @@ fun FitTrackNavHostContent(
                     composable(FitTrackDestination.ACTIVE_WORKOUT) {
                         ActiveWorkoutScreen(
                             onNavigateUp = { navController.navigateUp() },
-                            onFinishWorkout = {
-                                navController.popBackStack(FitTrackDestination.WORKOUTS, inclusive = false)
+                            onFinishWorkout = { finishedSessionId ->
+                                navController.navigate(FitTrackDestination.historyDetailRoute(finishedSessionId)) {
+                                    popUpTo(FitTrackDestination.WORKOUTS) {
+                                        inclusive = false
+                                    }
+                                }
                             }
                         )
                     }

@@ -19,4 +19,5 @@ data class WorkoutEditorUiState(
 
 sealed interface WorkoutEditorEvent {
     data class NavigateBack(val workoutId: Long) : WorkoutEditorEvent
+    data class NavigateToActiveWorkout(val sessionId: Long) : WorkoutEditorEvent
 }

@@ -1,6 +1,7 @@
 package com.haitranduc.fittrack.presentation.activeworkout
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,48 +11,92 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.core.designsystem.FitTrackIcons
 import com.haitranduc.fittrack.core.designsystem.theme.FitTrackTheme
+import com.haitranduc.fittrack.domain.model.Exercise
+import com.haitranduc.fittrack.domain.model.SetLog
+import com.haitranduc.fittrack.domain.model.WorkoutSession
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActiveWorkoutScreen(
     onNavigateUp: () -> Unit,
-    onFinishWorkout: () -> Unit,
+    onFinishWorkout: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ActiveWorkoutViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(uiState.session?.id, uiState.session?.finishedAt) {
+        if (uiState.session != null && uiState.session?.finishedAt == null) {
+            while (isActive) {
+                delay(1000L)
+                viewModel.onTimerTick()
+            }
+        }
+    }
+
+    LaunchedEffect(uiState.finishedSessionId) {
+        uiState.finishedSessionId?.let { id ->
+            onFinishWorkout(id)
+        }
+    }
+
+    ActiveWorkoutContent(
+        uiState = uiState,
+        onRepsChanged = viewModel::onRepsChanged,
+        onWeightChanged = viewModel::onWeightChanged,
+        onCompleteSetClicked = viewModel::onCompleteSetClicked,
+        onFinishClicked = viewModel::onFinishClicked,
+        onNavigateUp = onNavigateUp,
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ActiveWorkoutContent(
+    uiState: ActiveWorkoutUiState,
+    onRepsChanged: (String, String) -> Unit,
+    onWeightChanged: (String, String) -> Unit,
+    onCompleteSetClicked: (Exercise) -> Unit,
+    onFinishClicked: () -> Unit,
+    onNavigateUp: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var setCount by remember { mutableIntStateOf(3) }
-    var completedSetIndex by remember { mutableIntStateOf(-1) }
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -77,121 +122,197 @@ fun ActiveWorkoutScreen(
             )
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp)
-        ) {
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Timer & Status Banner
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ),
-                shape = RoundedCornerShape(14.dp)
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = stringResource(R.string.label_elapsed_time),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = stringResource(R.string.mock_elapsed_time),
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    }
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(
-                            text = stringResource(R.string.workout_template_push_day),
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                        )
+                CircularProgressIndicator()
+            }
+        } else if (uiState.isMissing) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = stringResource(R.string.error_workout_not_found),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = onNavigateUp) {
+                        Text(stringResource(R.string.cd_navigate_up))
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Active exercise section
-            LazyColumn(
+        } else {
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(horizontal = 16.dp)
             ) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        shape = RoundedCornerShape(14.dp),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Timer & Status Banner
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
+                        Column {
                             Text(
-                                text = stringResource(R.string.exercise_name_bench_press),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                text = stringResource(R.string.label_elapsed_time),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                             )
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = formatElapsedTime(uiState.elapsedTimeSeconds),
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = uiState.session?.workoutNameSnapshot ?: "",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
 
-                            // Table header
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.label_set_header),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.width(36.dp)
-                                )
-                                Text(
-                                    text = stringResource(R.string.label_kg_header),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = stringResource(R.string.label_reps_header),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Text(
-                                    text = stringResource(R.string.label_done_header),
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.width(44.dp)
-                                )
-                            }
+                Spacer(modifier = Modifier.height(16.dp))
 
-                            Spacer(modifier = Modifier.height(8.dp))
+                // Exercises List
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(uiState.exercises, key = { it.id }) { exercise ->
+                        val exerciseSets = uiState.completedSets.filter { it.exerciseId == exercise.id }
+                        val nextSetNumber = (exerciseSets.maxOfOrNull { it.setNumber } ?: 0) + 1
+                        val currentReps = uiState.inputReps[exercise.id] ?: "10"
+                        val currentWeight = uiState.inputWeight[exercise.id] ?: "50"
+                        val errorText = uiState.inputErrors[exercise.id]
 
-                            // Set rows
-                            for (i in 1..setCount) {
-                                val isDone = i <= completedSetIndex
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+                            shape = RoundedCornerShape(14.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(
+                                    text = exercise.name,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                // Table Header
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.label_set_header),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.width(36.dp)
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.label_kg_header),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.label_reps_header),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.label_done_header),
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        modifier = Modifier.width(44.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // Completed Sets
+                                exerciseSets.forEach { setLog ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 4.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = "${setLog.setNumber}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.width(36.dp)
+                                        )
+                                        Text(
+                                            text = if (setLog.weightKg % 1.0 == 0.0) "${setLog.weightKg.toInt()}" else "${setLog.weightKg}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        Text(
+                                            text = "${setLog.reps}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        FilledIconButton(
+                                            onClick = {},
+                                            enabled = false,
+                                            modifier = Modifier.width(44.dp),
+                                            colors = IconButtonDefaults.filledIconButtonColors(
+                                                disabledContainerColor = MaterialTheme.colorScheme.primary
+                                            )
+                                        ) {
+                                            Icon(
+                                                imageVector = FitTrackIcons.Check,
+                                                contentDescription = stringResource(R.string.cd_set_done),
+                                                tint = MaterialTheme.colorScheme.onPrimary
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // Next Set Input Row
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -200,102 +321,182 @@ fun ActiveWorkoutScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "$i",
+                                        text = "$nextSetNumber",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold,
+                                        fontWeight = FontWeight.Bold,
                                         modifier = Modifier.width(36.dp)
                                     )
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.surfaceVariant,
-                                        shape = RoundedCornerShape(6.dp),
-                                        modifier = Modifier.weight(1f).padding(end = 8.dp)
-                                    ) {
-                                        Text(
-                                            text = "${50 + (i - 1) * 5}",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.surfaceVariant,
-                                        shape = RoundedCornerShape(6.dp),
-                                        modifier = Modifier.weight(1f).padding(end = 8.dp)
-                                    ) {
-                                        Text(
-                                            text = "${12 - (i - 1) * 2}",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                        )
-                                    }
+                                    OutlinedTextField(
+                                        value = currentWeight,
+                                        onValueChange = { onWeightChanged(exercise.id, it) },
+                                        singleLine = true,
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(end = 4.dp)
+                                    )
+                                    OutlinedTextField(
+                                        value = currentReps,
+                                        onValueChange = { onRepsChanged(exercise.id, it) },
+                                        singleLine = true,
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .padding(end = 4.dp)
+                                    )
                                     FilledIconButton(
-                                        onClick = {
-                                            completedSetIndex = if (isDone) i - 1 else i
-                                        },
+                                        onClick = { onCompleteSetClicked(exercise) },
+                                        enabled = !uiState.isCompletingSet,
+                                        modifier = Modifier.width(44.dp),
                                         colors = IconButtonDefaults.filledIconButtonColors(
-                                            containerColor = if (isDone) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.surfaceVariant
-                                            }
-                                        ),
-                                        modifier = Modifier.width(44.dp).height(32.dp),
-                                        shape = RoundedCornerShape(6.dp)
+                                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        )
                                     ) {
                                         Icon(
                                             imageVector = FitTrackIcons.Check,
-                                            contentDescription = stringResource(R.string.cd_set_done),
-                                            tint = if (isDone) {
-                                                MaterialTheme.colorScheme.onPrimary
-                                            } else {
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                            }
+                                            contentDescription = stringResource(R.string.cd_set_done)
                                         )
                                     }
                                 }
-                            }
 
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            OutlinedButton(
-                                onClick = { setCount += 1 },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Text(text = stringResource(R.string.btn_add_set))
+                                if (errorText != null) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = errorText,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            // Finish Workout Button
-            Button(
-                onClick = onFinishWorkout,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 12.dp)
-                    .height(52.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
-            ) {
-                Text(
-                    text = stringResource(R.string.btn_finish_workout),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                if (uiState.finishError != null) {
+                    Text(
+                        text = uiState.finishError,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+
+                if (uiState.errorMessage != null) {
+                    Text(
+                        text = uiState.errorMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
+
+                Button(
+                    onClick = onFinishClicked,
+                    enabled = !uiState.isFinishing,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(52.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.btn_finish_workout),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
 }
 
-@Preview(showBackground = true, name = "Active Workout Screen")
+private fun formatElapsedTime(seconds: Long): String {
+    val hrs = seconds / 3600
+    val mins = (seconds % 3600) / 60
+    val secs = seconds % 60
+    return "%02d:%02d:%02d".format(hrs, mins, secs)
+}
+
+@Preview(showBackground = true, name = "Active Workout - Populated")
 @Composable
-private fun ActiveWorkoutScreenPreview() {
+private fun ActiveWorkoutContentPreview() {
     FitTrackTheme {
-        ActiveWorkoutScreen(onNavigateUp = {}, onFinishWorkout = {})
+        ActiveWorkoutContent(
+            uiState = ActiveWorkoutUiState(
+                isLoading = false,
+                isMissing = false,
+                elapsedTimeSeconds = 1455L,
+                session = WorkoutSession(
+                    id = 1L,
+                    workoutId = 1L,
+                    workoutNameSnapshot = "Push Day",
+                    startedAt = 1000L,
+                    finishedAt = null,
+                    durationSeconds = null,
+                    sets = listOf(
+                        SetLog(
+                            id = 1L,
+                            sessionId = 1L,
+                            exerciseId = "e1",
+                            exerciseNameSnapshot = "Barbell Bench Press",
+                            setNumber = 1,
+                            reps = 10,
+                            weightKg = 50.0,
+                            completedAt = 1100L
+                        )
+                    )
+                ),
+                exercises = listOf(
+                    Exercise(
+                        id = "e1",
+                        name = "Barbell Bench Press",
+                        bodyPart = "chest",
+                        equipment = "barbell",
+                        target = "pectorals",
+                        muscleGroup = "chest",
+                        secondaryMuscles = emptyList(),
+                        instructions = emptyList()
+                    )
+                ),
+                completedSets = listOf(
+                    SetLog(
+                        id = 1L,
+                        sessionId = 1L,
+                        exerciseId = "e1",
+                        exerciseNameSnapshot = "Barbell Bench Press",
+                        setNumber = 1,
+                        reps = 10,
+                        weightKg = 50.0,
+                        completedAt = 1100L
+                    )
+                ),
+                inputReps = mapOf("e1" to "10"),
+                inputWeight = mapOf("e1" to "50")
+            ),
+            onRepsChanged = { _, _ -> },
+            onWeightChanged = { _, _ -> },
+            onCompleteSetClicked = {},
+            onFinishClicked = {},
+            onNavigateUp = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Active Workout - Loading")
+@Composable
+private fun ActiveWorkoutContentLoadingPreview() {
+    FitTrackTheme {
+        ActiveWorkoutContent(
+            uiState = ActiveWorkoutUiState(isLoading = true),
+            onRepsChanged = { _, _ -> },
+            onWeightChanged = { _, _ -> },
+            onCompleteSetClicked = {},
+            onFinishClicked = {},
+            onNavigateUp = {}
+        )
     }
 }

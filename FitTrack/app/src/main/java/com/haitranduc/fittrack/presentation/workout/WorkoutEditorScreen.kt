@@ -59,6 +59,7 @@ fun WorkoutEditorScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is WorkoutEditorEvent.NavigateBack -> onNavigateUp()
+                is WorkoutEditorEvent.NavigateToActiveWorkout -> onStartWorkout(event.sessionId)
             }
         }
     }
@@ -71,9 +72,7 @@ fun WorkoutEditorScreen(
         onMoveUp = viewModel::onMoveExerciseUp,
         onMoveDown = viewModel::onMoveExerciseDown,
         onSaveClick = viewModel::onSaveClicked,
-        onStartClick = {
-            uiState.workoutId?.let { onStartWorkout(it) }
-        },
+        onStartClick = viewModel::onStartClicked,
         onPickerDismiss = viewModel::closeExercisePicker,
         onPickerQueryChange = viewModel::onPickerQueryChanged,
         onPickerExerciseSelect = viewModel::onExerciseSelected,
@@ -341,10 +340,10 @@ fun WorkoutEditorContent(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Start Workout Button (enabled when workout is saved or has exercises)
+                    // Start Workout Button (validates, saves if needed, and starts session)
                     Button(
                         onClick = onStartClick,
-                        enabled = uiState.workoutId != null && uiState.exercises.isNotEmpty(),
+                        enabled = !uiState.isSaving && !uiState.isLoading && !uiState.isMissing && uiState.exercises.isNotEmpty(),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 12.dp)
