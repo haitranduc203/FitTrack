@@ -238,4 +238,50 @@ object FitTrackIcons {
             }
         }.build()
     }
+
+    val ArrowUp: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "ArrowUp",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(4f, 12f)
+                lineTo(5.41f, 13.41f)
+                lineTo(11f, 7.83f)
+                verticalLineTo(20f)
+                horizontalLineTo(13f)
+                verticalLineTo(7.83f)
+                lineTo(18.59f, 13.41f)
+                lineTo(20f, 12f)
+                lineTo(12f, 4f)
+                close()
+            }
+        }.build()
+    }
+
+    val ArrowDown: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "ArrowDown",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(20f, 12f)
+                lineTo(18.59f, 10.59f)
+                lineTo(13f, 16.17f)
+                verticalLineTo(4f)
+                horizontalLineTo(11f)
+                verticalLineTo(16.17f)
+                lineTo(5.41f, 10.59f)
+                lineTo(4f, 12f)
+                lineTo(12f, 20f)
+                close()
+            }
+        }.build()
+    }
 }

@@ -17,6 +17,10 @@ class FakeExerciseRepository : ExerciseRepository {
     val exercisesFlow = MutableStateFlow<List<Exercise>>(emptyList())
     var returnDataFailure: Boolean = false
 
+    fun setExercises(exercises: List<Exercise>) {
+        exercisesFlow.value = exercises
+    }
+
     override suspend fun ensureSeeded(): SeedImportResult {
         ensureSeededCallCount++
         return seedResult

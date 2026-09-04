@@ -138,6 +138,14 @@
     <string name="btn_start_workout">Start Workout</string>
     <string name="label_sets_format">%1$d sets · %2$s reps</string>
     <string name="label_exercises_count">%1$d exercises</string>
+    <string name="error_workout_name_blank">Workout name cannot be blank.</string>
+    <string name="error_workout_name_too_long">Workout name must be 50 characters or less.</string>
+    <string name="error_workout_exercises_empty">Please add at least one exercise.</string>
+    <string name="error_workout_exercise_duplicate">This exercise is already added to the workout.</string>
+    <string name="error_workout_not_found">Workout not found.</string>
+    <string name="title_exercise_picker">Add Exercise</string>
+    <string name="cd_move_up">Move exercise up</string>
+    <string name="cd_move_down">Move exercise down</string>
 
     <!-- Mock Workout Templates & Reps -->
     <string name="workout_template_push_day">Push Day</string>

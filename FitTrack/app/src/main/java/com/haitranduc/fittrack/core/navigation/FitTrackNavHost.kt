@@ -224,18 +224,18 @@ fun FitTrackNavHostContent(
                         WorkoutEditorScreen(
                             workoutId = null,
                             onNavigateUp = { navController.navigateUp() },
-                            onStartWorkout = {
+                            onStartWorkout = { _ ->
                                 navController.navigate(FitTrackDestination.ACTIVE_WORKOUT)
                             }
                         )
                     }
 
                     composable(FitTrackDestination.WORKOUT_EDITOR_WITH_ID) { backStackEntry ->
-                        val workoutId = backStackEntry.arguments?.getString("workoutId")
+                        val workoutId = backStackEntry.arguments?.getString("workoutId")?.toLongOrNull()
                         WorkoutEditorScreen(
                             workoutId = workoutId,
                             onNavigateUp = { navController.navigateUp() },
-                            onStartWorkout = {
+                            onStartWorkout = { _ ->
                                 navController.navigate(FitTrackDestination.ACTIVE_WORKOUT)
                             }
                         )

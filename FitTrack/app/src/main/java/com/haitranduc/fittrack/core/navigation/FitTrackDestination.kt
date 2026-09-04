@@ -11,6 +11,7 @@ object FitTrackDestination {
     const val HISTORY_DETAIL = "history_detail/{sessionId}"
 
     fun exerciseDetailRoute(exerciseId: String): String = "exercise_detail/$exerciseId"
+    fun workoutEditorRoute(workoutId: Long): String = "workout_editor/$workoutId"
     fun workoutEditorRoute(workoutId: String): String = "workout_editor/$workoutId"
     fun historyDetailRoute(sessionId: String): String = "history_detail/$sessionId"
 }
