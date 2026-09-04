@@ -325,6 +325,7 @@ class RepositoryIntegrationTest {
             override suspend fun deleteSession(sessionId: Long): Int = throw SQLiteException("DB error")
             override fun observeSessionById(id: Long): Flow<WorkoutSessionEntity?> = flow { throw SQLiteException("DB error") }
             override suspend fun getActiveSession(): WorkoutSessionEntity? = throw SQLiteException("DB error")
+            override suspend fun getSessionById(id: Long): WorkoutSessionEntity? = throw SQLiteException("DB error")
             override fun observeActiveSession(): Flow<WorkoutSessionEntity?> = flow { throw SQLiteException("DB error") }
             override fun observeFinishedSessions(): Flow<List<WorkoutSessionEntity>> = flow { throw SQLiteException("DB error") }
             override fun observeSetsForSession(sessionId: Long): Flow<List<SetLogEntity>> = flow { throw SQLiteException("DB error") }
@@ -334,6 +335,7 @@ class RepositoryIntegrationTest {
             override suspend fun insertSetLog(setLog: SetLogEntity): Long = throw SQLiteException("DB error")
             override suspend fun deleteSetLog(id: Long): Int = throw SQLiteException("DB error")
             override fun observeSetLogsForSession(sessionId: Long): Flow<List<SetLogEntity>> = flow { throw SQLiteException("DB error") }
+            override suspend fun getSetLogsForSession(sessionId: Long): List<SetLogEntity> = throw SQLiteException("DB error")
         }
 
         val repo = WorkoutHistoryRepositoryImpl(failingSessionDao, failingSetLogDao)
@@ -349,6 +351,14 @@ class RepositoryIntegrationTest {
         val insertSetResult = repo.insertSet(SetLog(0L, 1L, "e", "E", 1, 10, 10.0, 0L))
         assertTrue(insertSetResult is DataResult.Failure)
         assertTrue((insertSetResult as DataResult.Failure).error is DataError.Database)
+
+        val getActiveResult = repo.getActiveSession()
+        assertTrue(getActiveResult is DataResult.Failure)
+        assertTrue((getActiveResult as DataResult.Failure).error is DataError.Database)
+
+        val getSessionResult = repo.getSession(1L)
+        assertTrue(getSessionResult is DataResult.Failure)
+        assertTrue((getSessionResult as DataResult.Failure).error is DataError.Database)
 
         val deleteResult = repo.deleteSession(1L)
         assertTrue(deleteResult is DataResult.Failure)
@@ -440,6 +450,7 @@ class RepositoryIntegrationTest {
             override suspend fun deleteSession(sessionId: Long): Int = 0
             override fun observeSessionById(id: Long): Flow<WorkoutSessionEntity?> = flow { throw LinkageError("Fatal LinkageError in WorkoutSessionDao") }
             override suspend fun getActiveSession(): WorkoutSessionEntity? = null
+            override suspend fun getSessionById(id: Long): WorkoutSessionEntity? = null
             override fun observeActiveSession(): Flow<WorkoutSessionEntity?> = flow { throw LinkageError("Fatal LinkageError in WorkoutSessionDao") }
             override fun observeFinishedSessions(): Flow<List<WorkoutSessionEntity>> = flow { throw LinkageError("Fatal LinkageError in WorkoutSessionDao") }
             override fun observeSetsForSession(sessionId: Long): Flow<List<SetLogEntity>> = flow { throw LinkageError("Fatal LinkageError in WorkoutSessionDao") }
@@ -449,9 +460,68 @@ class RepositoryIntegrationTest {
             override suspend fun insertSetLog(setLog: SetLogEntity): Long = 0L
             override suspend fun deleteSetLog(id: Long): Int = 0
             override fun observeSetLogsForSession(sessionId: Long): Flow<List<SetLogEntity>> = flow { throw LinkageError("Fatal LinkageError in SetLogDao") }
+            override suspend fun getSetLogsForSession(sessionId: Long): List<SetLogEntity> = emptyList()
         }
 
         val repo = WorkoutHistoryRepositoryImpl(failingSessionDao, failingSetLogDao)
         repo.observeHistory().first()
+    }
+
+    @Test
+    fun workoutHistoryRepository_getActiveSession_returnsActiveSessionWithSets() = runTest {
+        val session = WorkoutSession(
+            id = 0L,
+            workoutId = null,
+            workoutNameSnapshot = "Push Day",
+            startedAt = 1000L,
+            finishedAt = null,
+            durationSeconds = null,
+            sets = emptyList()
+        )
+        val insertResult = historyRepository.insertSession(session)
+        assertTrue(insertResult is DataResult.Success)
+        val sessionId = (insertResult as DataResult.Success).data
+
+        val setLog = SetLog(
+            id = 0L,
+            sessionId = sessionId,
+            exerciseId = "e1",
+            exerciseNameSnapshot = "Bench Press",
+            setNumber = 1,
+            reps = 10,
+            weightKg = 50.0,
+            completedAt = 2000L
+        )
+        historyRepository.insertSet(setLog)
+
+        val activeResult = historyRepository.getActiveSession()
+        assertTrue(activeResult is DataResult.Success)
+        val active = (activeResult as DataResult.Success).data
+        assertNotNull(active)
+        assertEquals(sessionId, active?.id)
+        assertEquals(1, active?.sets?.size)
+        assertEquals("Bench Press", active?.sets?.get(0)?.exerciseNameSnapshot)
+    }
+
+    @Test
+    fun workoutHistoryRepository_getSession_returnsSessionWithSets() = runTest {
+        val session = WorkoutSession(
+            id = 0L,
+            workoutId = null,
+            workoutNameSnapshot = "Leg Day",
+            startedAt = 1000L,
+            finishedAt = null,
+            durationSeconds = null,
+            sets = emptyList()
+        )
+        val insertResult = historyRepository.insertSession(session)
+        val sessionId = (insertResult as DataResult.Success).data
+
+        val getResult = historyRepository.getSession(sessionId)
+        assertTrue(getResult is DataResult.Success)
+        val fetched = (getResult as DataResult.Success).data
+        assertNotNull(fetched)
+        assertEquals(sessionId, fetched?.id)
+        assertEquals("Leg Day", fetched?.workoutNameSnapshot)
     }
 }

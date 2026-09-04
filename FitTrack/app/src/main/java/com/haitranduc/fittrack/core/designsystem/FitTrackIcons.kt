@@ -238,4 +238,81 @@ object FitTrackIcons {
             }
         }.build()
     }
+
+    val Delete: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "Delete",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(6f, 19f)
+                curveTo(6f, 20.1f, 6.9f, 21f, 8f, 21f)
+                horizontalLineTo(16f)
+                curveTo(17.1f, 21f, 18f, 20.1f, 18f, 19f)
+                verticalLineTo(7f)
+                horizontalLineTo(6f)
+                verticalLineTo(19f)
+                close()
+                moveTo(19f, 4f)
+                horizontalLineTo(15.5f)
+                lineTo(14.5f, 3f)
+                horizontalLineTo(9.5f)
+                lineTo(8.5f, 4f)
+                horizontalLineTo(5f)
+                verticalLineTo(6f)
+                horizontalLineTo(19f)
+                verticalLineTo(4f)
+                close()
+            }
+        }.build()
+    }
+
+    val ArrowUp: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "ArrowUp",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(4f, 12f)
+                lineTo(5.41f, 13.41f)
+                lineTo(11f, 7.83f)
+                verticalLineTo(20f)
+                horizontalLineTo(13f)
+                verticalLineTo(7.83f)
+                lineTo(18.59f, 13.41f)
+                lineTo(20f, 12f)
+                lineTo(12f, 4f)
+                close()
+            }
+        }.build()
+    }
+
+    val ArrowDown: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "ArrowDown",
+            defaultWidth = 24.dp,
+            defaultHeight = 24.dp,
+            viewportWidth = 24f,
+            viewportHeight = 24f
+        ).apply {
+            path(fill = SolidColor(Color.White)) {
+                moveTo(20f, 12f)
+                lineTo(18.59f, 10.59f)
+                lineTo(13f, 16.17f)
+                verticalLineTo(4f)
+                horizontalLineTo(11f)
+                verticalLineTo(16.17f)
+                lineTo(5.41f, 10.59f)
+                lineTo(4f, 12f)
+                lineTo(12f, 20f)
+                close()
+            }
+        }.build()
+    }
 }

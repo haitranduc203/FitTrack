@@ -43,12 +43,21 @@
     <string name="filter_shoulders">Shoulders</string>
     <string name="filter_back">Back</string>
     <string name="filter_legs">Legs</string>
+    <string name="filter_upper_legs">Upper Legs</string>
+    <string name="filter_lower_legs">Lower Legs</string>
+    <string name="filter_upper_arms">Upper Arms</string>
+    <string name="filter_waist">Waist</string>
+    <string name="filter_cardio">Cardio</string>
     <string name="filter_barbell">Barbell</string>
     <string name="filter_bodyweight">Bodyweight</string>
     <string name="filter_dumbbell">Dumbbell</string>
+    <string name="filter_cable">Cable</string>
     <string name="label_body_part_filter">Body Part</string>
     <string name="label_equipment_filter">Equipment</string>
     <string name="empty_exercises">No exercises found matching your search.</string>
+    <string name="loading_startup">Initializing exercise library&#8230;</string>
+    <string name="error_startup">Failed to initialize exercise library.</string>
+    <string name="action_retry">Retry</string>
     <string name="title_exercise_detail">Exercise Detail</string>
     <string name="placeholder_media_title">Exercise Demonstration Placeholder</string>
     <string name="placeholder_media_subtitle">Media license from dataset is not bundled</string>
@@ -129,6 +138,19 @@
     <string name="btn_start_workout">Start Workout</string>
     <string name="label_sets_format">%1$d sets · %2$s reps</string>
     <string name="label_exercises_count">%1$d exercises</string>
+    <string name="error_workout_name_blank">Workout name cannot be blank.</string>
+    <string name="error_workout_name_too_long">Workout name must be 50 characters or less.</string>
+    <string name="error_workout_exercises_empty">Please add at least one exercise.</string>
+    <string name="error_workout_exercise_duplicate">This exercise is already added to the workout.</string>
+    <string name="error_workout_not_found">Workout not found.</string>
+    <string name="title_exercise_picker">Add Exercise</string>
+    <string name="cd_move_up">Move exercise up</string>
+    <string name="cd_move_down">Move exercise down</string>
+    <string name="dialog_delete_workout_title">Delete Workout</string>
+    <string name="dialog_delete_workout_message">Are you sure you want to delete this workout? Completed history will not be lost.</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="cd_delete_workout">Delete workout</string>
 
     <!-- Mock Workout Templates & Reps -->
     <string name="workout_template_push_day">Push Day</string>
@@ -162,4 +184,16 @@
     <string name="history_date_3days">3 days ago</string>
     <string name="history_duration_48m">48 mins</string>
     <string name="history_duration_42m">42 mins</string>
+
+    <!-- Error Messages -->
+    <string name="error_database">A database error occurred. Please try again.</string>
+    <string name="error_unknown">An unexpected error occurred. Please try again.</string>
+    <string name="error_active_session_exists">A workout is already in progress.</string>
+    <string name="error_session_already_finished">Session has already finished.</string>
+    <string name="error_session_not_found">Session not found.</string>
+    <string name="error_no_completed_sets">Complete at least one set before finishing.</string>
+    <string name="error_invalid_reps">Reps must be between 1 and 100.</string>
+    <string name="error_invalid_weight">Weight must be between 0 and 1000 kg.</string>
+    <string name="error_invalid_reps_number">Reps must be a valid number.</string>
+    <string name="error_invalid_weight_number">Weight must be a valid number.</string>
 </resources>

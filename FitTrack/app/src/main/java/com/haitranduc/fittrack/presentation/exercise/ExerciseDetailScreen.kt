@@ -16,8 +16,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,6 +30,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,18 +38,38 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.core.designsystem.FitTrackIcons
 import com.haitranduc.fittrack.core.designsystem.theme.FitTrackTheme
+import com.haitranduc.fittrack.domain.model.Exercise
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExerciseDetailScreen(
     exerciseId: String,
     onNavigateUp: () -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: ExerciseDetailViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    ExerciseDetailContent(
+        uiState = uiState,
+        onNavigateUp = onNavigateUp,
+        onRetry = viewModel::retry,
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ExerciseDetailContent(
+    uiState: ExerciseDetailUiState,
+    onNavigateUp: () -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val exercise = ExerciseMockData.find(exerciseId)
+    val exercise = uiState.exercise
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -54,7 +77,7 @@ fun ExerciseDetailScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = exercise?.let { stringResource(it.nameRes) } ?: stringResource(R.string.title_exercise_detail),
+                        text = exercise?.name ?: stringResource(R.string.title_exercise_detail),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -73,157 +96,193 @@ fun ExerciseDetailScreen(
             )
         }
     ) { innerPadding ->
-        if (exercise == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = stringResource(R.string.empty_exercises),
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Media Placeholder (No emoji or dataset assets)
-                Card(
+        when {
+            uiState.isLoading -> {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = RoundedCornerShape(16.dp)
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+            uiState.errorMessage != null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
                 ) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.padding(24.dp)
                     ) {
-                        Box(
+                        Text(
+                            text = uiState.errorMessage.asString(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Button(onClick = onRetry) {
+                            Text(text = stringResource(R.string.action_retry))
+                        }
+                    }
+                }
+            }
+            uiState.isMissing || exercise == null -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.empty_exercises),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            else -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Media Placeholder
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
                             modifier = Modifier
-                                .size(52.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
+                                .fillMaxSize()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Icon(
-                                imageVector = FitTrackIcons.Exercises,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = stringResource(R.string.placeholder_media_title),
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = stringResource(R.string.placeholder_media_subtitle),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                        )
-                    }
-                }
-
-                // Metadata Card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(14.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        MetadataRow(
-                            label = stringResource(R.string.label_target),
-                            value = stringResource(exercise.targetRes)
-                        )
-                        MetadataRow(
-                            label = stringResource(R.string.label_equipment),
-                            value = stringResource(exercise.equipmentRes)
-                        )
-                        MetadataRow(
-                            label = stringResource(R.string.label_body_part),
-                            value = stringResource(exercise.bodyPartRes)
-                        )
-                        if (exercise.secondaryMusclesRes.isNotEmpty()) {
-                            val secondaryNames = exercise.secondaryMusclesRes.map { stringResource(it) }
-                            MetadataRow(
-                                label = stringResource(R.string.label_secondary_muscles),
-                                value = secondaryNames.joinToString(", ")
-                            )
-                        }
-                    }
-                }
-
-                // Instructions Section
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    shape = RoundedCornerShape(14.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = stringResource(R.string.label_instructions),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        exercise.instructionsRes.forEachIndexed { index, stepRes ->
-                            Row(
+                            Box(
                                 modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 6.dp),
-                                verticalAlignment = Alignment.Top
+                                    .size(52.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Surface(
-                                    modifier = Modifier.size(24.dp),
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.primaryContainer
-                                ) {
-                                    Box(contentAlignment = Alignment.Center) {
-                                        Text(
-                                            text = "${index + 1}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = stringResource(stepRes),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                    modifier = Modifier.weight(1f)
+                                Icon(
+                                    imageVector = FitTrackIcons.Exercises,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = stringResource(R.string.placeholder_media_title),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = stringResource(R.string.placeholder_media_subtitle),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+
+                    // Metadata Card
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            MetadataRow(
+                                label = stringResource(R.string.label_target),
+                                value = exercise.target
+                            )
+                            MetadataRow(
+                                label = stringResource(R.string.label_equipment),
+                                value = exercise.equipment
+                            )
+                            MetadataRow(
+                                label = stringResource(R.string.label_body_part),
+                                value = exercise.bodyPart
+                            )
+                            if (exercise.secondaryMuscles.isNotEmpty()) {
+                                MetadataRow(
+                                    label = stringResource(R.string.label_secondary_muscles),
+                                    value = exercise.secondaryMuscles.joinToString(", ")
                                 )
                             }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    // Instructions Section
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text(
+                                text = stringResource(R.string.label_instructions),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            exercise.instructions.forEachIndexed { index, step ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 6.dp),
+                                    verticalAlignment = Alignment.Top
+                                ) {
+                                    Surface(
+                                        modifier = Modifier.size(24.dp),
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.primaryContainer
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Text(
+                                                text = "${index + 1}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = step,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
             }
         }
     }
@@ -260,6 +319,21 @@ private fun MetadataRow(label: String, value: String) {
 @Composable
 private fun ExerciseDetailScreenPreview() {
     FitTrackTheme {
-        ExerciseDetailScreen(exerciseId = "bench_press", onNavigateUp = {})
+        ExerciseDetailContent(
+            uiState = ExerciseDetailUiState(
+                exercise = Exercise(
+                    id = "0025",
+                    name = "barbell bench press",
+                    bodyPart = "chest",
+                    equipment = "barbell",
+                    target = "pectorals",
+                    muscleGroup = "triceps",
+                    secondaryMuscles = listOf("triceps", "shoulders"),
+                    instructions = listOf("Lie on bench", "Lower bar", "Press up")
+                )
+            ),
+            onNavigateUp = {},
+            onRetry = {}
+        )
     }
 }

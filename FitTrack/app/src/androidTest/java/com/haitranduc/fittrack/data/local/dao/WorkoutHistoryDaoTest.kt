@@ -212,4 +212,59 @@ class WorkoutHistoryDaoTest {
         assertEquals(1, sessionWithSets?.sets?.size)
         assertEquals("Barbell Bench Press Snapshot", sessionWithSets?.sets?.get(0)?.exerciseNameSnapshot)
     }
+
+    @Test
+    fun fileBackedDatabase_closeAndReopen_persistsFinishedSessionAndSets() = runTest {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        context.deleteDatabase("test_file_backed_history.db")
+
+        var fileDb: FitTrackDatabase? = Room.databaseBuilder(context, FitTrackDatabase::class.java, "test_file_backed_history.db")
+            .allowMainThreadQueries()
+            .build()
+
+        val wId = fileDb!!.workoutDao().insertWorkout(WorkoutEntity(name = "Chest Day", createdAt = 100L, updatedAt = 100L))
+        val sId = fileDb.workoutSessionDao().insertSession(
+            WorkoutSessionEntity(
+                workoutId = wId,
+                workoutNameSnapshot = "Chest Day Reopen Test",
+                startedAt = 200L,
+                finishedAt = 500L,
+                durationSeconds = 300L
+            )
+        )
+        fileDb.setLogDao().insertSetLog(
+            SetLogEntity(
+                sessionId = sId,
+                exerciseId = "ex_reopen",
+                exerciseNameSnapshot = "Reopen Exercise",
+                setNumber = 1,
+                reps = 15,
+                weightKg = 50.0,
+                completedAt = 350L
+            )
+        )
+
+        // Close database
+        fileDb.close()
+        fileDb = null
+
+        // Reopen database from disk
+        val reopenedDb = Room.databaseBuilder(context, FitTrackDatabase::class.java, "test_file_backed_history.db")
+            .allowMainThreadQueries()
+            .build()
+
+        try {
+            val sessionWithSets = reopenedDb.workoutSessionDao().observeSessionWithSets(sId).first()
+            assertNotNull(sessionWithSets)
+            assertEquals("Chest Day Reopen Test", sessionWithSets?.session?.workoutNameSnapshot)
+            assertEquals(300L, sessionWithSets?.session?.durationSeconds)
+            assertEquals(1, sessionWithSets?.sets?.size)
+            assertEquals("Reopen Exercise", sessionWithSets?.sets?.get(0)?.exerciseNameSnapshot)
+            assertEquals(15, sessionWithSets?.sets?.get(0)?.reps)
+            assertEquals(50.0, sessionWithSets?.sets?.get(0)?.weightKg ?: 0.0, 0.001)
+        } finally {
+            reopenedDb.close()
+            context.deleteDatabase("test_file_backed_history.db")
+        }
+    }
 }

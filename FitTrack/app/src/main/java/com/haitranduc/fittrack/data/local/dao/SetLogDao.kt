@@ -19,4 +19,7 @@ interface SetLogDao {
 
     @Query("SELECT * FROM set_logs WHERE sessionId = :sessionId ORDER BY exerciseId ASC, setNumber ASC, id ASC")
     fun observeSetLogsForSession(sessionId: Long): Flow<List<SetLogEntity>>
+
+    @Query("SELECT * FROM set_logs WHERE sessionId = :sessionId ORDER BY exerciseId ASC, setNumber ASC, id ASC")
+    suspend fun getSetLogsForSession(sessionId: Long): List<SetLogEntity>
 }
