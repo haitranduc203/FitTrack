@@ -1,6 +1,7 @@
 package com.haitranduc.fittrack.data.repository
 
 import com.haitranduc.fittrack.domain.repository.ExerciseRepository
+import com.haitranduc.fittrack.domain.repository.FavoriteExerciseRepository
 import com.haitranduc.fittrack.domain.repository.WorkoutHistoryRepository
 import com.haitranduc.fittrack.domain.repository.WorkoutRepository
 import dagger.Binds
@@ -18,6 +19,12 @@ abstract class RepositoryModule {
     abstract fun bindExerciseRepository(
         impl: ExerciseRepositoryImpl
     ): ExerciseRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindFavoriteExerciseRepository(
+        impl: FavoriteExerciseRepositoryImpl
+    ): FavoriteExerciseRepository
 
     @Binds
     @Singleton

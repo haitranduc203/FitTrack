@@ -52,6 +52,10 @@
     <string name="filter_bodyweight">Bodyweight</string>
     <string name="filter_dumbbell">Dumbbell</string>
     <string name="filter_cable">Cable</string>
+    <string name="filter_favorites">Favorites</string>
+    <string name="cd_favorite_exercise">Add exercise to favorites</string>
+    <string name="cd_unfavorite_exercise">Remove exercise from favorites</string>
+    <string name="cd_dismiss_error">Dismiss error</string>
     <string name="label_body_part_filter">Body Part</string>
     <string name="label_equipment_filter">Equipment</string>
     <string name="empty_exercises">No exercises found matching your search.</string>

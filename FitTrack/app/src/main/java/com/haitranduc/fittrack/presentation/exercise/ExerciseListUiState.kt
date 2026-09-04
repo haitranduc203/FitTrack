@@ -9,5 +9,9 @@ data class ExerciseListUiState(
     val searchQuery: String = "",
     val selectedBodyPart: String? = null,
     val selectedEquipment: String? = null,
-    val errorMessage: UiText? = null
+    val errorMessage: UiText? = null,
+    val favoriteExerciseIds: Set<String> = emptySet(),
+    val isFavoritesOnly: Boolean = false,
+    val pendingFavoriteIds: Set<String> = emptySet(),
+    val favoriteErrorMessage: UiText? = null
 )

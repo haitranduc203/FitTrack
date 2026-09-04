@@ -524,4 +524,43 @@ class RepositoryIntegrationTest {
         assertEquals(sessionId, fetched?.id)
         assertEquals("Leg Day", fetched?.workoutNameSnapshot)
     }
+
+    @Test
+    fun favoriteExerciseRepository_setAndObserveFavorites_persistsAcrossCloseAndReopen() = runTest {
+        context.deleteDatabase("favorite_repo_test.db")
+        var fileDb = Room.databaseBuilder(context, FitTrackDatabase::class.java, "favorite_repo_test.db")
+            .allowMainThreadQueries()
+            .build()
+        fileDb.exerciseDao().insertAll(listOf(
+            ExerciseEntity("e1", "Bench Press", "chest", "barbell", "pectorals", "chest", emptyList(), emptyList(), null, null)
+        ))
+        val timeProvider = com.haitranduc.fittrack.core.time.SystemTimeProvider()
+        var repo: com.haitranduc.fittrack.domain.repository.FavoriteExerciseRepository =
+            FavoriteExerciseRepositoryImpl(fileDb.favoriteExerciseDao(), timeProvider)
+
+        val initial = repo.observeFavoriteIds().first()
+        assertTrue((initial as DataResult.Success).data.isEmpty())
+
+        val setResult = repo.setFavorite("e1", true)
+        assertTrue(setResult is DataResult.Success)
+
+        val updated = repo.observeFavoriteIds().first()
+        assertEquals(setOf("e1"), (updated as DataResult.Success).data)
+
+        fileDb.close()
+        fileDb = Room.databaseBuilder(context, FitTrackDatabase::class.java, "favorite_repo_test.db")
+            .allowMainThreadQueries()
+            .build()
+        repo = FavoriteExerciseRepositoryImpl(fileDb.favoriteExerciseDao(), timeProvider)
+
+        val reopened = repo.observeFavoriteIds().first()
+        assertEquals(setOf("e1"), (reopened as DataResult.Success).data)
+
+        repo.setFavorite("e1", false)
+        val afterUnfavorite = repo.observeFavoriteIds().first()
+        assertTrue((afterUnfavorite as DataResult.Success).data.isEmpty())
+
+        fileDb.close()
+        context.deleteDatabase("favorite_repo_test.db")
+    }
 }

@@ -2,8 +2,10 @@ package com.haitranduc.fittrack.presentation.exercise
 
 import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.Exercise
+import com.haitranduc.fittrack.domain.repository.DataError
 import com.haitranduc.fittrack.presentation.util.UiText
 import com.haitranduc.fittrack.testing.FakeExerciseRepository
+import com.haitranduc.fittrack.testing.FakeFavoriteExerciseRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
@@ -16,6 +18,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -26,6 +29,7 @@ class ExerciseListViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: FakeExerciseRepository
+    private lateinit var favoriteRepository: FakeFavoriteExerciseRepository
 
     private val sampleExercises = listOf(
         Exercise("ex_1", "Bench Press", "Chest", "Barbell", "Pectorals", "Chest", listOf("Triceps"), listOf("Step 1")),
@@ -38,6 +42,7 @@ class ExerciseListViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         repository = FakeExerciseRepository()
+        favoriteRepository = FakeFavoriteExerciseRepository()
         repository.exercisesFlow.value = sampleExercises
     }
 
@@ -46,9 +51,13 @@ class ExerciseListViewModelTest {
         Dispatchers.resetMain()
     }
 
+    private fun createViewModel(): ExerciseListViewModel {
+        return ExerciseListViewModel(repository, favoriteRepository)
+    }
+
     @Test
     fun init_observesAllExercisesByDefault() = runTest(testDispatcher) {
-        val viewModel = ExerciseListViewModel(repository)
+        val viewModel = createViewModel()
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect()
         }
@@ -61,13 +70,15 @@ class ExerciseListViewModelTest {
         assertNull(state.selectedBodyPart)
         assertNull(state.selectedEquipment)
         assertNull(state.errorMessage)
+        assertFalse(state.isFavoritesOnly)
+        assertTrue(state.favoriteExerciseIds.isEmpty())
 
         collectJob.cancel()
     }
 
     @Test
     fun onSearchQueryChanged_filtersExercises() = runTest(testDispatcher) {
-        val viewModel = ExerciseListViewModel(repository)
+        val viewModel = createViewModel()
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect()
         }
@@ -87,7 +98,7 @@ class ExerciseListViewModelTest {
 
     @Test
     fun onBodyPartSelected_andClearing_filtersCorrectly() = runTest(testDispatcher) {
-        val viewModel = ExerciseListViewModel(repository)
+        val viewModel = createViewModel()
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect()
         }
@@ -114,7 +125,7 @@ class ExerciseListViewModelTest {
 
     @Test
     fun onEquipmentSelected_andCombinedFilters_filterCorrectly() = runTest(testDispatcher) {
-        val viewModel = ExerciseListViewModel(repository)
+        val viewModel = createViewModel()
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect()
         }
@@ -134,7 +145,7 @@ class ExerciseListViewModelTest {
 
     @Test
     fun emptyResult_showsEmptyListWithoutError() = runTest(testDispatcher) {
-        val viewModel = ExerciseListViewModel(repository)
+        val viewModel = createViewModel()
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect()
         }
@@ -154,7 +165,7 @@ class ExerciseListViewModelTest {
     @Test
     fun repositoryFailure_surfacesErrorMessage() = runTest(testDispatcher) {
         repository.returnDataFailure = true
-        val viewModel = ExerciseListViewModel(repository)
+        val viewModel = createViewModel()
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect()
         }
@@ -170,7 +181,7 @@ class ExerciseListViewModelTest {
     @Test
     fun retry_afterFailure_resubscribesAndLoadsContent() = runTest(testDispatcher) {
         repository.returnDataFailure = true
-        val viewModel = ExerciseListViewModel(repository)
+        val viewModel = createViewModel()
         val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             viewModel.uiState.collect()
         }
@@ -193,6 +204,114 @@ class ExerciseListViewModelTest {
         val successState = viewModel.uiState.value
         assertNull(successState.errorMessage)
         assertEquals(4, successState.exercises.size)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun favoritesFilter_whenEnabled_filtersToOnlyFavoriteExercises() = runTest(testDispatcher) {
+        favoriteRepository.favoriteIdsFlow.value = setOf("ex_1", "ex_3")
+        val viewModel = createViewModel()
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        assertEquals(4, viewModel.uiState.value.exercises.size)
+        assertEquals(setOf("ex_1", "ex_3"), viewModel.uiState.value.favoriteExerciseIds)
+
+        viewModel.onFavoritesFilterToggled(true)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.isFavoritesOnly)
+        assertEquals(2, state.exercises.size)
+        assertEquals(listOf("ex_1", "ex_3"), state.exercises.map { it.id })
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun favoritesFilter_composesWithSearchAndBodyPartFilters() = runTest(testDispatcher) {
+        favoriteRepository.favoriteIdsFlow.value = setOf("ex_1", "ex_3")
+        val viewModel = createViewModel()
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        viewModel.onFavoritesFilterToggled(true)
+        viewModel.onBodyPartSelected("Chest")
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals(1, state.exercises.size)
+        assertEquals("ex_1", state.exercises[0].id)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun toggleFavorite_callsRepository_andUpdatesFavoriteIds() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.favoriteExerciseIds.contains("ex_2"))
+
+        viewModel.onToggleFavorite("ex_2")
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.favoriteExerciseIds.contains("ex_2"))
+        assertEquals(1, favoriteRepository.setFavoriteCallCount)
+
+        viewModel.onToggleFavorite("ex_2")
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.favoriteExerciseIds.contains("ex_2"))
+        assertEquals(2, favoriteRepository.setFavoriteCallCount)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun toggleFavorite_duplicateTapWhilePending_isProtected() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        viewModel.onToggleFavorite("ex_1")
+        // Second call while first is in progress
+        viewModel.onToggleFavorite("ex_1")
+        advanceUntilIdle()
+
+        assertEquals(1, favoriteRepository.setFavoriteCallCount)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun toggleFavorite_repositoryFailure_surfacesErrorMessage() = runTest(testDispatcher) {
+        favoriteRepository.setFavoriteError = DataError.Database(RuntimeException("Disk error"))
+        val viewModel = createViewModel()
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        viewModel.onToggleFavorite("ex_1")
+        advanceUntilIdle()
+
+        assertEquals(UiText.StringResource(R.string.error_database), viewModel.uiState.value.favoriteErrorMessage)
+        assertTrue(viewModel.uiState.value.pendingFavoriteIds.isEmpty())
+
+        viewModel.onClearFavoriteError()
+        advanceUntilIdle()
+        assertNull(viewModel.uiState.value.favoriteErrorMessage)
 
         collectJob.cancel()
     }

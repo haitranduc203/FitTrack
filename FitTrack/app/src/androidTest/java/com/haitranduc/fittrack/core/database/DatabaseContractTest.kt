@@ -107,7 +107,7 @@ class DatabaseContractTest {
         val sqliteDb = db.openHelper.readableDatabase
 
         // 1. Assert Room Version
-        assertEquals("Database version must be 1", 1, sqliteDb.version)
+        assertEquals("Database version must be 2", 2, sqliteDb.version)
 
         // 2. Assert Tables exist
         val tables = mutableListOf<String>()
@@ -122,6 +122,7 @@ class DatabaseContractTest {
         assertTrue("Missing workout_exercises table", tables.contains("workout_exercises"))
         assertTrue("Missing workout_sessions table", tables.contains("workout_sessions"))
         assertTrue("Missing set_logs table", tables.contains("set_logs"))
+        assertTrue("Missing favorite_exercises table", tables.contains("favorite_exercises"))
 
         // 3. Verify Foreign Keys mapping (table, from, to, on_delete)
         val weFks = getForeignKeys(sqliteDb, "workout_exercises")
@@ -137,6 +138,10 @@ class DatabaseContractTest {
         val slFks = getForeignKeys(sqliteDb, "set_logs")
         assertTrue("set_logs must reference workout_sessions(id) with CASCADE",
             slFks.any { it.table == "workout_sessions" && it.from == "sessionId" && it.to == "id" && it.onDelete == "CASCADE" })
+
+        val favFks = getForeignKeys(sqliteDb, "favorite_exercises")
+        assertTrue("favorite_exercises must reference exercises(id) with CASCADE",
+            favFks.any { it.table == "exercises" && it.from == "exerciseId" && it.to == "id" && it.onDelete == "CASCADE" })
 
         // 4. Verify Exact Ordered Columns and Unique Properties for all required indexes:
         val exIndexes = getIndexes(sqliteDb, "exercises")
@@ -162,12 +167,14 @@ class DatabaseContractTest {
         assertNotNull(db.workoutDao())
         assertNotNull(db.workoutSessionDao())
         assertNotNull(db.setLogDao())
+        assertNotNull(db.favoriteExerciseDao())
 
         // 6. Verify DatabaseModule providers with isolated database instance
         assertNotNull(DatabaseModule.provideExerciseDao(db))
         assertNotNull(DatabaseModule.provideWorkoutDao(db))
         assertNotNull(DatabaseModule.provideWorkoutSessionDao(db))
         assertNotNull(DatabaseModule.provideSetLogDao(db))
+        assertNotNull(DatabaseModule.provideFavoriteExerciseDao(db))
         val seedReader = DatabaseModule.provideAssetSeedReader(context)
         assertNotNull(seedReader)
         val seedImporter = DatabaseModule.provideExerciseSeedImporter(db, db.exerciseDao(), seedReader)

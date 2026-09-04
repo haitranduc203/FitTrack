@@ -56,6 +56,8 @@ fun ExerciseDetailScreen(
     ExerciseDetailContent(
         uiState = uiState,
         onNavigateUp = onNavigateUp,
+        onToggleFavorite = viewModel::onToggleFavorite,
+        onClearFavoriteError = viewModel::onClearFavoriteError,
         onRetry = viewModel::retry,
         modifier = modifier
     )
@@ -66,6 +68,8 @@ fun ExerciseDetailScreen(
 fun ExerciseDetailContent(
     uiState: ExerciseDetailUiState,
     onNavigateUp: () -> Unit,
+    onToggleFavorite: () -> Unit,
+    onClearFavoriteError: () -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -88,6 +92,22 @@ fun ExerciseDetailContent(
                             imageVector = FitTrackIcons.ArrowBack,
                             contentDescription = stringResource(R.string.cd_navigate_up)
                         )
+                    }
+                },
+                actions = {
+                    if (exercise != null) {
+                        IconButton(
+                            onClick = onToggleFavorite,
+                            enabled = !uiState.isTogglingFavorite
+                        ) {
+                            Icon(
+                                imageVector = if (uiState.isFavorite) FitTrackIcons.Star else FitTrackIcons.StarBorder,
+                                contentDescription = stringResource(
+                                    if (uiState.isFavorite) R.string.cd_unfavorite_exercise else R.string.cd_favorite_exercise
+                                ),
+                                tint = if (uiState.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -153,6 +173,37 @@ fun ExerciseDetailContent(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    if (uiState.favoriteErrorMessage != null) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = uiState.favoriteErrorMessage.asString(),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(onClick = onClearFavoriteError) {
+                                    Icon(
+                                        imageVector = FitTrackIcons.Close,
+                                        contentDescription = stringResource(R.string.cd_dismiss_error),
+                                        tint = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
                     // Media Placeholder
                     Card(
                         modifier = Modifier
@@ -330,9 +381,12 @@ private fun ExerciseDetailScreenPreview() {
                     muscleGroup = "triceps",
                     secondaryMuscles = listOf("triceps", "shoulders"),
                     instructions = listOf("Lie on bench", "Lower bar", "Press up")
-                )
+                ),
+                isFavorite = true
             ),
             onNavigateUp = {},
+            onToggleFavorite = {},
+            onClearFavoriteError = {},
             onRetry = {}
         )
     }
