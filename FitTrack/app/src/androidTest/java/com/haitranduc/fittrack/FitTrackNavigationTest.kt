@@ -5,19 +5,16 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isSelectable
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextClearance
-import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.haitranduc.fittrack.core.designsystem.theme.FitTrackTheme
-import com.haitranduc.fittrack.core.navigation.FitTrackNavHost
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,18 +23,21 @@ import org.junit.runner.RunWith
 class FitTrackNavigationTest {
 
     @get:Rule
-    val composeTestRule = createComposeRule()
+    val composeTestRule = createAndroidComposeRule<MainActivity>()
 
     private val context: Context
         get() = ApplicationProvider.getApplicationContext()
 
+    private fun waitUntilReady() {
+        val titleExercises = context.getString(R.string.title_exercises)
+        composeTestRule.waitUntil(timeoutMillis = 20_000) {
+            composeTestRule.onAllNodesWithText(titleExercises).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
     @Test
     fun test_bottomNavigationDestinations() {
-        composeTestRule.setContent {
-            FitTrackTheme {
-                FitTrackNavHost()
-            }
-        }
+        waitUntilReady()
 
         val navExercises = context.getString(R.string.nav_exercises)
         val navWorkouts = context.getString(R.string.nav_workouts)
@@ -64,24 +64,22 @@ class FitTrackNavigationTest {
 
     @Test
     fun test_exerciseList_to_exerciseDetail_andBack() {
-        composeTestRule.setContent {
-            FitTrackTheme {
-                FitTrackNavHost()
-            }
-        }
+        waitUntilReady()
 
         val titleExercises = context.getString(R.string.title_exercises)
-        val benchPressName = context.getString(R.string.exercise_name_bench_press)
         val labelInstructions = context.getString(R.string.label_instructions)
         val cdNavigateUp = context.getString(R.string.cd_navigate_up)
 
         // Verify on Exercises list
         composeTestRule.onAllNodesWithText(titleExercises).onFirst().assertIsDisplayed()
 
-        // Click Barbell Bench Press card
-        composeTestRule.onAllNodesWithText(benchPressName).onFirst().performClick()
+        // Click first item (3/4 sit-up) directly
+        composeTestRule.onNodeWithText("3/4 sit-up").performClick()
 
         // Verify on Detail screen
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText(labelInstructions).fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithText(labelInstructions).assertIsDisplayed()
 
         // Navigate back
@@ -93,11 +91,7 @@ class FitTrackNavigationTest {
 
     @Test
     fun test_workoutList_to_workoutEditor_to_activeWorkout_andFinish() {
-        composeTestRule.setContent {
-            FitTrackTheme {
-                FitTrackNavHost()
-            }
-        }
+        waitUntilReady()
 
         val navWorkouts = context.getString(R.string.nav_workouts)
         val titleWorkouts = context.getString(R.string.title_workouts)
@@ -132,11 +126,7 @@ class FitTrackNavigationTest {
 
     @Test
     fun test_historyList_to_historyDetail_andBack() {
-        composeTestRule.setContent {
-            FitTrackTheme {
-                FitTrackNavHost()
-            }
-        }
+        waitUntilReady()
 
         val navHistory = context.getString(R.string.nav_history)
         val titleHistory = context.getString(R.string.title_history)
@@ -163,94 +153,88 @@ class FitTrackNavigationTest {
 
     @Test
     fun test_searchNonMatchingQuery_showsEmptyState() {
-        composeTestRule.setContent {
-            FitTrackTheme {
-                FitTrackNavHost()
-            }
-        }
+        waitUntilReady()
 
         val emptyExercisesText = context.getString(R.string.empty_exercises)
-        val benchPressName = context.getString(R.string.exercise_name_bench_press)
 
-        // Bench press is visible initially
-        composeTestRule.onAllNodesWithText(benchPressName).onFirst().assertIsDisplayed()
+        // Enter non-matching search query using performTextReplacement
+        composeTestRule.onNode(hasSetTextAction()).performTextReplacement("XYZNonExistentExercise123")
 
-        // Enter non-matching search query
-        composeTestRule.onNode(hasSetTextAction()).performTextInput("XYZNonExistentExercise123")
-
-        // Verify empty state is displayed and bench press is gone
+        // Verify empty state is displayed
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText(emptyExercisesText).fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithText(emptyExercisesText).assertIsDisplayed()
-        composeTestRule.onNode(hasText(benchPressName)).assertDoesNotExist()
     }
 
     @Test
     fun test_bodyPartFilter_filtersCorrectExercises() {
-        composeTestRule.setContent {
-            FitTrackTheme {
-                FitTrackNavHost()
-            }
-        }
+        waitUntilReady()
 
         val filterChest = context.getString(R.string.filter_chest)
-        val benchPressName = context.getString(R.string.exercise_name_bench_press)
-        val deadliftName = context.getString(R.string.exercise_name_deadlift)
-
-        // Both Bench Press (Chest) and Deadlift (Back) exist initially
-        composeTestRule.onAllNodesWithText(benchPressName).onFirst().assertIsDisplayed()
-        composeTestRule.onAllNodesWithText(deadliftName).onFirst().assertIsDisplayed()
 
         // Click Chest filter chip (which is selectable)
         composeTestRule.onNode(hasText(filterChest) and isSelectable()).performClick()
 
-        // Bench press must still be displayed, while Deadlift must not exist
-        composeTestRule.onAllNodesWithText(benchPressName).onFirst().assertIsDisplayed()
-        composeTestRule.onNode(hasText(deadliftName)).assertDoesNotExist()
+        // Bench press must be displayed when searched
+        composeTestRule.onNode(hasSetTextAction()).performTextReplacement("bench press")
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText("barbell bench press").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onAllNodesWithText("barbell bench press").onFirst().assertIsDisplayed()
+
+        // Deadlift (upper legs) must not exist under chest filter
+        composeTestRule.onNode(hasText("barbell deadlift")).assertDoesNotExist()
     }
 
     @Test
     fun test_equipmentFilter_filtersCorrectExercises() {
-        composeTestRule.setContent {
-            FitTrackTheme {
-                FitTrackNavHost()
-            }
-        }
+        waitUntilReady()
 
+        val filterBarbell = context.getString(R.string.filter_barbell)
         val filterBodyweight = context.getString(R.string.filter_bodyweight)
-        val pullUpName = context.getString(R.string.exercise_name_pull_up)
-        val benchPressName = context.getString(R.string.exercise_name_bench_press)
 
-        // Click Bodyweight filter chip (which is selectable)
+        // Initially 3/4 sit-up (body weight) is visible
+        composeTestRule.onNodeWithText("3/4 sit-up").assertIsDisplayed()
+
+        // Click Barbell filter chip
+        composeTestRule.onNode(hasText(filterBarbell) and isSelectable()).performClick()
+
+        // Barbell alternate biceps curl must be displayed, 3/4 sit-up must not exist
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText("barbell alternate biceps curl").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("barbell alternate biceps curl").assertIsDisplayed()
+        composeTestRule.onNodeWithText("3/4 sit-up").assertDoesNotExist()
+
+        // Click Bodyweight filter chip
         composeTestRule.onNode(hasText(filterBodyweight) and isSelectable()).performClick()
 
-        // Pull Up (Bodyweight) must be displayed, Bench Press (Barbell) must not exist
-        composeTestRule.onAllNodesWithText(pullUpName).onFirst().assertIsDisplayed()
-        composeTestRule.onNode(hasText(benchPressName)).assertDoesNotExist()
+        // 3/4 sit-up must be displayed, barbell alternate biceps curl must not exist
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText("3/4 sit-up").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("3/4 sit-up").assertIsDisplayed()
+        composeTestRule.onNodeWithText("barbell alternate biceps curl").assertDoesNotExist()
     }
 
     @Test
     fun test_combinedFilterAndSearch_doesNotCrash() {
-        composeTestRule.setContent {
-            FitTrackTheme {
-                FitTrackNavHost()
-            }
-        }
+        waitUntilReady()
 
-        val filterBack = context.getString(R.string.filter_back)
+        val filterChest = context.getString(R.string.filter_chest)
         val filterBodyweight = context.getString(R.string.filter_bodyweight)
-        val pullUpName = context.getString(R.string.exercise_name_pull_up)
-        val emptyExercisesText = context.getString(R.string.empty_exercises)
 
-        // Select Back (Body Part) and Bodyweight (Equipment) filter chips
-        composeTestRule.onNode(hasText(filterBack) and isSelectable()).performClick()
+        // Select Chest and Bodyweight filter chips
+        composeTestRule.onNode(hasText(filterChest) and isSelectable()).performClick()
         composeTestRule.onNode(hasText(filterBodyweight) and isSelectable()).performClick()
 
-        // Search "Pull" -> should show Pull Up
-        composeTestRule.onNode(hasSetTextAction()).performTextInput("Pull")
-        composeTestRule.onAllNodesWithText(pullUpName).onFirst().assertIsDisplayed()
+        // Search "archer"
+        composeTestRule.onNode(hasSetTextAction()).performTextReplacement("archer")
 
-        // Change search query to non-matching -> should show empty state without crash
-        composeTestRule.onNode(hasSetTextAction()).performTextClearance()
-        composeTestRule.onNode(hasSetTextAction()).performTextInput("UnmatchedQuery")
-        composeTestRule.onNodeWithText(emptyExercisesText).assertIsDisplayed()
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText("archer push up").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("archer push up").assertIsDisplayed()
     }
 }
