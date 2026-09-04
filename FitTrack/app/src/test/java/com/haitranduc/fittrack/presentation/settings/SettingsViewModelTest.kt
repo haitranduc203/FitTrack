@@ -110,4 +110,49 @@ class SettingsViewModelTest {
 
         collectJob.cancel()
     }
+
+    @Test
+    fun observeThemePreference_readFailure_surfacesError_andRetryRecovers() = runTest(testDispatcher) {
+        repository.observeError = DataError.Database(RuntimeException("Read error"))
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        assertEquals(UiText.StringResource(R.string.error_database), viewModel.uiState.value.errorMessage)
+        assertFalse(viewModel.uiState.value.isLoading)
+
+        // Clear error and trigger retry
+        repository.observeError = null
+        viewModel.retry()
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.errorMessage)
+        assertEquals(ThemePreference.SYSTEM, viewModel.uiState.value.selectedTheme)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun onThemeSelected_failedWrite_retainsPreviouslySelectedTheme() = runTest(testDispatcher) {
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        // First select DARK successfully
+        viewModel.onThemeSelected(ThemePreference.DARK)
+        advanceUntilIdle()
+        assertEquals(ThemePreference.DARK, viewModel.uiState.value.selectedTheme)
+
+        // Now attempt LIGHT which fails
+        repository.setError = DataError.Database(RuntimeException("Write error"))
+        viewModel.onThemeSelected(ThemePreference.LIGHT)
+        advanceUntilIdle()
+
+        assertEquals(UiText.StringResource(R.string.error_database), viewModel.uiState.value.errorMessage)
+        assertEquals(ThemePreference.DARK, viewModel.uiState.value.selectedTheme)
+
+        collectJob.cancel()
+    }
 }

@@ -27,14 +27,7 @@ class ThemePreferenceRepositoryImpl @Inject constructor(
 
     override fun observeThemePreference(): Flow<DataResult<ThemePreference>> {
         return dataStore.data
-            .catch { exception ->
-                if (exception is IOException) {
-                    emit(emptyPreferences())
-                } else {
-                    throw exception
-                }
-            }
-            .map { preferences ->
+            .map<Preferences, DataResult<ThemePreference>> { preferences ->
                 val rawName = preferences[THEME_PREFERENCE_KEY]
                 val preference = if (rawName.isNullOrBlank()) {
                     ThemePreference.SYSTEM
@@ -47,6 +40,15 @@ class ThemePreferenceRepositoryImpl @Inject constructor(
                 }
                 DataResult.Success(preference)
             }
+            .catch { exception ->
+                if (exception is kotlinx.coroutines.CancellationException) throw exception
+                if (exception is java.lang.Error) throw exception
+                if (exception is IOException) {
+                    emit(DataResult.Failure(DataError.Database(exception)))
+                } else {
+                    emit(DataResult.Failure(DataError.Unknown(exception)))
+                }
+            }
     }
 
     override suspend fun setThemePreference(preference: ThemePreference): DataResult<Unit> {
@@ -55,6 +57,10 @@ class ThemePreferenceRepositoryImpl @Inject constructor(
                 preferences[THEME_PREFERENCE_KEY] = preference.name
             }
             DataResult.Success(Unit)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: java.lang.Error) {
+            throw e
         } catch (e: IOException) {
             DataResult.Failure(DataError.Database(e))
         } catch (e: Exception) {

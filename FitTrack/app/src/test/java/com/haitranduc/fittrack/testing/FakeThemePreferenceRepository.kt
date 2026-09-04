@@ -15,12 +15,16 @@ class FakeThemePreferenceRepository(
 
     private val preferenceFlow = MutableStateFlow(initialPreference)
     var observeError: DataError? = null
+    var observeException: Throwable? = null
     var setError: DataError? = null
+    var setException: Throwable? = null
     var setPreferenceCallCount = 0
         private set
 
     override fun observeThemePreference(): Flow<DataResult<ThemePreference>> {
         return preferenceFlow.asStateFlow().map { pref ->
+            val ex = observeException
+            if (ex != null) throw ex
             val err = observeError
             if (err != null) {
                 DataResult.Failure(err)
@@ -32,6 +36,8 @@ class FakeThemePreferenceRepository(
 
     override suspend fun setThemePreference(preference: ThemePreference): DataResult<Unit> {
         setPreferenceCallCount++
+        val ex = setException
+        if (ex != null) throw ex
         val err = setError
         return if (err != null) {
             DataResult.Failure(err)

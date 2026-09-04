@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -52,6 +53,7 @@ fun SettingsScreen(
         uiState = uiState,
         onThemeSelected = viewModel::onThemeSelected,
         onClearError = viewModel::onClearError,
+        onRetry = viewModel::retry,
         modifier = modifier
     )
 }
@@ -62,6 +64,7 @@ fun SettingsContent(
     uiState: SettingsUiState,
     onThemeSelected: (ThemePreference) -> Unit,
     onClearError: () -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -106,25 +109,36 @@ fun SettingsContent(
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Row(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = uiState.errorMessage.asString(),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.weight(1f)
-                            )
-                            IconButton(onClick = onClearError) {
-                                Icon(
-                                    imageVector = FitTrackIcons.Close,
-                                    contentDescription = stringResource(R.string.cd_dismiss_error),
-                                    tint = MaterialTheme.colorScheme.onErrorContainer
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = uiState.errorMessage.asString(),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.weight(1f)
                                 )
+                                IconButton(onClick = onClearError) {
+                                    Icon(
+                                        imageVector = FitTrackIcons.Close,
+                                        contentDescription = stringResource(R.string.cd_dismiss_error),
+                                        tint = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+                            Button(
+                                onClick = onRetry,
+                                modifier = Modifier.align(Alignment.End)
+                            ) {
+                                Text(text = stringResource(R.string.action_retry))
                             }
                         }
                     }
@@ -220,7 +234,8 @@ private fun SettingsScreenDefaultPreview() {
                 selectedTheme = ThemePreference.SYSTEM
             ),
             onThemeSelected = {},
-            onClearError = {}
+            onClearError = {},
+            onRetry = {}
         )
     }
 }
@@ -234,7 +249,8 @@ private fun SettingsScreenDarkPreview() {
                 selectedTheme = ThemePreference.DARK
             ),
             onThemeSelected = {},
-            onClearError = {}
+            onClearError = {},
+            onRetry = {}
         )
     }
 }
@@ -249,7 +265,8 @@ private fun SettingsScreenErrorPreview() {
                 errorMessage = UiText.StringResource(R.string.error_database)
             ),
             onThemeSelected = {},
-            onClearError = {}
+            onClearError = {},
+            onRetry = {}
         )
     }
 }
