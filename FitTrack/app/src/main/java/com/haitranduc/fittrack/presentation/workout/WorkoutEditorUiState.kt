@@ -1,6 +1,7 @@
 package com.haitranduc.fittrack.presentation.workout
 
 import com.haitranduc.fittrack.domain.model.Exercise
+import com.haitranduc.fittrack.presentation.util.UiText
 
 data class WorkoutEditorUiState(
     val isLoading: Boolean = false,
@@ -14,7 +15,7 @@ data class WorkoutEditorUiState(
     val isPickerOpen: Boolean = false,
     val pickerExercises: List<Exercise> = emptyList(),
     val pickerQuery: String = "",
-    val errorMessage: String? = null
+    val errorMessage: UiText? = null
 )
 
 sealed interface WorkoutEditorEvent {

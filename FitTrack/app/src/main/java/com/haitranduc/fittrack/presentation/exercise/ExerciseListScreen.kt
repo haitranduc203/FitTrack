@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -74,6 +75,7 @@ fun ExerciseListScreen(
         onBodyPartSelect = viewModel::onBodyPartSelected,
         onEquipmentSelect = viewModel::onEquipmentSelected,
         onExerciseClick = onExerciseClick,
+        onRetry = viewModel::onRetry,
         modifier = modifier
     )
 }
@@ -86,6 +88,7 @@ fun ExerciseListContent(
     onBodyPartSelect: (String?) -> Unit,
     onEquipmentSelect: (String?) -> Unit,
     onExerciseClick: (String) -> Unit,
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Scaffold(
@@ -201,13 +204,17 @@ fun ExerciseListContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                text = uiState.errorMessage,
+                                text = uiState.errorMessage.asString(),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
+                            Button(onClick = onRetry) {
+                                Text(text = stringResource(R.string.action_retry))
+                            }
                         }
                     }
                 }
@@ -329,7 +336,8 @@ private fun ExerciseListScreenPreview() {
             onSearchQueryChange = {},
             onBodyPartSelect = {},
             onEquipmentSelect = {},
-            onExerciseClick = {}
+            onExerciseClick = {},
+            onRetry = {}
         )
     }
 }

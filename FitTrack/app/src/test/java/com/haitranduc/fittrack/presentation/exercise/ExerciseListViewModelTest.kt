@@ -1,6 +1,8 @@
 package com.haitranduc.fittrack.presentation.exercise
 
+import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.Exercise
+import com.haitranduc.fittrack.presentation.util.UiText
 import com.haitranduc.fittrack.testing.FakeExerciseRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -160,7 +162,37 @@ class ExerciseListViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertTrue(state.errorMessage != null)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun retry_afterFailure_resubscribesAndLoadsContent() = runTest(testDispatcher) {
+        repository.returnDataFailure = true
+        val viewModel = ExerciseListViewModel(repository)
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        // 1. Initial state is Error
+        val errorState = viewModel.uiState.value
+        assertEquals(UiText.StringResource(R.string.error_database), errorState.errorMessage)
+        assertTrue(errorState.exercises.isEmpty())
+        val initialSubscriptionCount = repository.observeExercisesSubscriptionCount
+        assertTrue(initialSubscriptionCount >= 1)
+
+        // 2. Clear failure flag and retry
+        repository.returnDataFailure = false
+        viewModel.onRetry()
+        advanceUntilIdle()
+
+        // 3. Re-subscribed and loaded content, old error cleared
+        assertTrue(repository.observeExercisesSubscriptionCount > initialSubscriptionCount)
+        val successState = viewModel.uiState.value
+        assertNull(successState.errorMessage)
+        assertEquals(4, successState.exercises.size)
 
         collectJob.cancel()
     }

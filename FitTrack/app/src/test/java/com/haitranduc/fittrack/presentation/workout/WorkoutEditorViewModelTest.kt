@@ -1,11 +1,13 @@
 package com.haitranduc.fittrack.presentation.workout
 
 import androidx.lifecycle.SavedStateHandle
+import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.Exercise
 import com.haitranduc.fittrack.domain.model.Workout
 import com.haitranduc.fittrack.domain.model.WorkoutSession
 import com.haitranduc.fittrack.domain.repository.DataError
 import com.haitranduc.fittrack.domain.usecase.SaveWorkoutUseCase
+import com.haitranduc.fittrack.presentation.util.UiText
 import com.haitranduc.fittrack.testing.FakeExerciseRepository
 import com.haitranduc.fittrack.testing.FakeTimeProvider
 import com.haitranduc.fittrack.testing.FakeWorkoutRepository
@@ -320,7 +322,7 @@ class WorkoutEditorViewModelTest {
 
         val state = viewModel.uiState.value
         assertFalse(state.isSaving)
-        assertNotNull(state.errorMessage)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
     }
 
     @Test

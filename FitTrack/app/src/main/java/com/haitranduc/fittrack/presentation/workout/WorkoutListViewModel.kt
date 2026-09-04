@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.haitranduc.fittrack.domain.model.Workout
 import com.haitranduc.fittrack.domain.repository.DataResult
 import com.haitranduc.fittrack.domain.repository.WorkoutRepository
+import com.haitranduc.fittrack.presentation.util.toUiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,7 +52,7 @@ class WorkoutListViewModel @Inject constructor(
                             it.copy(
                                 isLoading = false,
                                 workouts = emptyList(),
-                                errorMessage = result.error.toString()
+                                errorMessage = result.error.toUiText()
                             )
                         }
                     }
@@ -93,7 +94,7 @@ class WorkoutListViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isDeleting = false,
-                            errorMessage = result.error.toString()
+                            errorMessage = result.error.toUiText()
                         )
                     }
                 }

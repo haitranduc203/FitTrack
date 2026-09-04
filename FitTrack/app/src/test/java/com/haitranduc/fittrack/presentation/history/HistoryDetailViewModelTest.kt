@@ -1,9 +1,11 @@
 package com.haitranduc.fittrack.presentation.history
 
 import androidx.lifecycle.SavedStateHandle
+import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.SetLog
 import com.haitranduc.fittrack.domain.model.WorkoutSession
 import com.haitranduc.fittrack.domain.repository.DataError
+import com.haitranduc.fittrack.presentation.util.UiText
 import com.haitranduc.fittrack.testing.FakeWorkoutHistoryRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -125,7 +127,7 @@ class HistoryDetailViewModelTest {
 
         val state = vm.uiState.value
         assertFalse(state.isLoading)
-        assertNotNull(state.errorMessage)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
         assertNull(state.session)
     }
 
@@ -135,7 +137,7 @@ class HistoryDetailViewModelTest {
         val vm = createViewModel(sessionId = 10L)
         advanceUntilIdle()
 
-        assertNotNull(vm.uiState.value.errorMessage)
+        assertEquals(UiText.StringResource(R.string.error_database), vm.uiState.value.errorMessage)
 
         // Clear error and add session
         historyRepository.observeSessionError = null

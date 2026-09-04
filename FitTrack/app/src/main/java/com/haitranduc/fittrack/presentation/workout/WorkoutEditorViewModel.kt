@@ -16,6 +16,8 @@ import com.haitranduc.fittrack.domain.usecase.StartWorkoutUseCase
 import com.haitranduc.fittrack.domain.validation.ExerciseListResult
 import com.haitranduc.fittrack.domain.validation.NameResult
 import com.haitranduc.fittrack.domain.validation.WorkoutValidation
+import com.haitranduc.fittrack.presentation.util.UiText
+import com.haitranduc.fittrack.presentation.util.toUiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
@@ -96,7 +98,7 @@ class WorkoutEditorViewModel @Inject constructor(
                             }
                             is DataResult.Failure -> {
                                 _uiState.update {
-                                    it.copy(isLoading = false, errorMessage = result.error.toString())
+                                    it.copy(isLoading = false, errorMessage = result.error.toUiText())
                                 }
                             }
                         }
@@ -116,7 +118,7 @@ class WorkoutEditorViewModel @Inject constructor(
                         _uiState.update { it.copy(pickerExercises = result.data) }
                     }
                     is DataResult.Failure -> {
-                        _uiState.update { it.copy(errorMessage = result.error.toString()) }
+                        _uiState.update { it.copy(errorMessage = result.error.toUiText()) }
                     }
                 }
             }
@@ -243,7 +245,7 @@ class WorkoutEditorViewModel @Inject constructor(
                 }
                 is SaveWorkoutResult.RepositoryError -> {
                     _uiState.update {
-                        it.copy(isSaving = false, errorMessage = result.error.toString())
+                        it.copy(isSaving = false, errorMessage = result.error.toUiText())
                     }
                 }
             }
@@ -299,7 +301,7 @@ class WorkoutEditorViewModel @Inject constructor(
                         }
                         StartWorkoutResult.WorkoutNotFound -> {
                             _uiState.update {
-                                it.copy(isSaving = false, errorMessage = "Workout not found.")
+                                it.copy(isSaving = false, errorMessage = UiText.StringResource(R.string.error_workout_not_found))
                             }
                         }
                         StartWorkoutResult.EmptyWorkout -> {
@@ -309,7 +311,7 @@ class WorkoutEditorViewModel @Inject constructor(
                         }
                         is StartWorkoutResult.Failure -> {
                             _uiState.update {
-                                it.copy(isSaving = false, errorMessage = startResult.error.toString())
+                                it.copy(isSaving = false, errorMessage = startResult.error.toUiText())
                             }
                         }
                     }
@@ -332,7 +334,7 @@ class WorkoutEditorViewModel @Inject constructor(
                 }
                 is SaveWorkoutResult.RepositoryError -> {
                     _uiState.update {
-                        it.copy(isSaving = false, errorMessage = saveResult.error.toString())
+                        it.copy(isSaving = false, errorMessage = saveResult.error.toUiText())
                     }
                 }
             }

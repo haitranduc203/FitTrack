@@ -120,7 +120,7 @@ fun ExerciseDetailContent(
                         modifier = Modifier.padding(24.dp)
                     ) {
                         Text(
-                            text = uiState.errorMessage,
+                            text = uiState.errorMessage.asString(),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error
                         )

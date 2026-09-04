@@ -97,7 +97,7 @@ fun FitTrackNavHostContent(
                     )
                     startupState.message?.let {
                         Text(
-                            text = it,
+                            text = it.asString(),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

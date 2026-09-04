@@ -8,6 +8,7 @@ import com.haitranduc.fittrack.domain.repository.SeedImportResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 
 class FakeExerciseRepository : ExerciseRepository {
 
@@ -16,6 +17,8 @@ class FakeExerciseRepository : ExerciseRepository {
 
     val exercisesFlow = MutableStateFlow<List<Exercise>>(emptyList())
     var returnDataFailure: Boolean = false
+    var observeExercisesSubscriptionCount = 0
+    var observeExerciseSubscriptionCount = 0
 
     fun setExercises(exercises: List<Exercise>) {
         exercisesFlow.value = exercises
@@ -31,30 +34,34 @@ class FakeExerciseRepository : ExerciseRepository {
         bodyPart: String?,
         equipment: String?
     ): Flow<DataResult<List<Exercise>>> {
-        return exercisesFlow.map { list ->
-            if (returnDataFailure) {
-                DataResult.Failure(DataError.Database(RuntimeException("Simulated database failure")))
-            } else {
-                val filtered = list.filter { exercise ->
-                    val matchesQuery = query.isBlank() ||
-                            exercise.name.contains(query, ignoreCase = true) ||
-                            exercise.target.contains(query, ignoreCase = true)
-                    val matchesBodyPart = bodyPart == null || exercise.bodyPart.equals(bodyPart, ignoreCase = true)
-                    val matchesEquipment = equipment == null || exercise.equipment.equals(equipment, ignoreCase = true)
-                    matchesQuery && matchesBodyPart && matchesEquipment
+        return exercisesFlow
+            .onStart { observeExercisesSubscriptionCount++ }
+            .map { list ->
+                if (returnDataFailure) {
+                    DataResult.Failure(DataError.Database(RuntimeException("Simulated database failure")))
+                } else {
+                    val filtered = list.filter { exercise ->
+                        val matchesQuery = query.isBlank() ||
+                                exercise.name.contains(query, ignoreCase = true) ||
+                                exercise.target.contains(query, ignoreCase = true)
+                        val matchesBodyPart = bodyPart == null || exercise.bodyPart.equals(bodyPart, ignoreCase = true)
+                        val matchesEquipment = equipment == null || exercise.equipment.equals(equipment, ignoreCase = true)
+                        matchesQuery && matchesBodyPart && matchesEquipment
+                    }
+                    DataResult.Success(filtered)
                 }
-                DataResult.Success(filtered)
             }
-        }
     }
 
     override fun observeExercise(id: String): Flow<DataResult<Exercise?>> {
-        return exercisesFlow.map { list ->
-            if (returnDataFailure) {
-                DataResult.Failure(DataError.Database(RuntimeException("Simulated database failure")))
-            } else {
-                DataResult.Success(list.find { it.id == id })
+        return exercisesFlow
+            .onStart { observeExerciseSubscriptionCount++ }
+            .map { list ->
+                if (returnDataFailure) {
+                    DataResult.Failure(DataError.Database(RuntimeException("Simulated database failure")))
+                } else {
+                    DataResult.Success(list.find { it.id == id })
+                }
             }
-        }
     }
 }

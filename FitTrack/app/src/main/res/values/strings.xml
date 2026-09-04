@@ -184,4 +184,16 @@
     <string name="history_date_3days">3 days ago</string>
     <string name="history_duration_48m">48 mins</string>
     <string name="history_duration_42m">42 mins</string>
+
+    <!-- Error Messages -->
+    <string name="error_database">A database error occurred. Please try again.</string>
+    <string name="error_unknown">An unexpected error occurred. Please try again.</string>
+    <string name="error_active_session_exists">A workout is already in progress.</string>
+    <string name="error_session_already_finished">Session has already finished.</string>
+    <string name="error_session_not_found">Session not found.</string>
+    <string name="error_no_completed_sets">Complete at least one set before finishing.</string>
+    <string name="error_invalid_reps">Reps must be between 1 and 100.</string>
+    <string name="error_invalid_weight">Weight must be between 0 and 1000 kg.</string>
+    <string name="error_invalid_reps_number">Reps must be a valid number.</string>
+    <string name="error_invalid_weight_number">Weight must be a valid number.</string>
 </resources>

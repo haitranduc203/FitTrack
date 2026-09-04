@@ -1,6 +1,7 @@
 package com.haitranduc.fittrack.presentation.activeworkout
 
 import androidx.lifecycle.SavedStateHandle
+import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.Exercise
 import com.haitranduc.fittrack.domain.model.SetLog
 import com.haitranduc.fittrack.domain.model.Workout
@@ -8,6 +9,7 @@ import com.haitranduc.fittrack.domain.model.WorkoutSession
 import com.haitranduc.fittrack.domain.repository.DataError
 import com.haitranduc.fittrack.domain.usecase.CompleteSetUseCase
 import com.haitranduc.fittrack.domain.usecase.FinishWorkoutUseCase
+import com.haitranduc.fittrack.presentation.util.UiText
 import com.haitranduc.fittrack.testing.FakeTimeProvider
 import com.haitranduc.fittrack.testing.FakeWorkoutHistoryRepository
 import com.haitranduc.fittrack.testing.FakeWorkoutRepository
@@ -176,7 +178,7 @@ class ActiveWorkoutViewModelTest {
         vm.onCompleteSetClicked(sampleExercise)
         advanceUntilIdle()
 
-        assertNotNull(vm.uiState.value.inputErrors["e1"])
+        assertEquals(UiText.StringResource(R.string.error_invalid_reps), vm.uiState.value.inputErrors["e1"])
         assertTrue(workoutHistoryRepository.setLogs.isEmpty())
 
         // Non-number
@@ -184,7 +186,7 @@ class ActiveWorkoutViewModelTest {
         vm.onCompleteSetClicked(sampleExercise)
         advanceUntilIdle()
 
-        assertNotNull(vm.uiState.value.inputErrors["e1"])
+        assertEquals(UiText.StringResource(R.string.error_invalid_reps_number), vm.uiState.value.inputErrors["e1"])
         assertTrue(workoutHistoryRepository.setLogs.isEmpty())
     }
 
@@ -229,7 +231,7 @@ class ActiveWorkoutViewModelTest {
         vm.onCompleteSetClicked(sampleExercise)
         advanceUntilIdle()
 
-        assertNotNull(vm.uiState.value.errorMessage)
+        assertEquals(UiText.StringResource(R.string.error_database), vm.uiState.value.errorMessage)
         assertTrue(vm.uiState.value.completedSets.isEmpty())
     }
 
@@ -241,7 +243,7 @@ class ActiveWorkoutViewModelTest {
         vm.onFinishClicked()
         advanceUntilIdle()
 
-        assertNotNull(vm.uiState.value.finishError)
+        assertEquals(UiText.StringResource(R.string.error_no_completed_sets), vm.uiState.value.finishError)
         assertNull(vm.uiState.value.finishedSessionId)
     }
 

@@ -3,6 +3,7 @@ package com.haitranduc.fittrack.presentation.activeworkout
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.Exercise
 import com.haitranduc.fittrack.domain.repository.DataResult
 import com.haitranduc.fittrack.domain.repository.WorkoutHistoryRepository
@@ -12,6 +13,8 @@ import com.haitranduc.fittrack.domain.usecase.CompleteSetResult
 import com.haitranduc.fittrack.domain.usecase.CompleteSetUseCase
 import com.haitranduc.fittrack.domain.usecase.FinishWorkoutResult
 import com.haitranduc.fittrack.domain.usecase.FinishWorkoutUseCase
+import com.haitranduc.fittrack.presentation.util.UiText
+import com.haitranduc.fittrack.presentation.util.toUiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -81,7 +84,7 @@ class ActiveWorkoutViewModel @Inject constructor(
                     }
                     is DataResult.Failure -> {
                         _uiState.update {
-                            it.copy(isLoading = false, errorMessage = result.error.toString())
+                            it.copy(isLoading = false, errorMessage = result.error.toUiText())
                         }
                     }
                 }
@@ -130,14 +133,14 @@ class ActiveWorkoutViewModel @Inject constructor(
 
         if (reps == null) {
             _uiState.update {
-                it.copy(inputErrors = it.inputErrors + (exercise.id to "Reps must be a valid number."))
+                it.copy(inputErrors = it.inputErrors + (exercise.id to UiText.StringResource(R.string.error_invalid_reps_number)))
             }
             return
         }
 
         if (weight == null) {
             _uiState.update {
-                it.copy(inputErrors = it.inputErrors + (exercise.id to "Weight must be a valid number."))
+                it.copy(inputErrors = it.inputErrors + (exercise.id to UiText.StringResource(R.string.error_invalid_weight_number)))
             }
             return
         }
@@ -161,7 +164,7 @@ class ActiveWorkoutViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isCompletingSet = false,
-                            inputErrors = it.inputErrors + (exercise.id to "Reps must be between 1 and 100.")
+                            inputErrors = it.inputErrors + (exercise.id to UiText.StringResource(R.string.error_invalid_reps))
                         )
                     }
                 }
@@ -169,7 +172,7 @@ class ActiveWorkoutViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isCompletingSet = false,
-                            inputErrors = it.inputErrors + (exercise.id to "Weight must be between 0 and 1000 kg.")
+                            inputErrors = it.inputErrors + (exercise.id to UiText.StringResource(R.string.error_invalid_weight))
                         )
                     }
                 }
@@ -180,12 +183,12 @@ class ActiveWorkoutViewModel @Inject constructor(
                 }
                 CompleteSetResult.SessionAlreadyFinished -> {
                     _uiState.update {
-                        it.copy(isCompletingSet = false, errorMessage = "Session has already finished.")
+                        it.copy(isCompletingSet = false, errorMessage = UiText.StringResource(R.string.error_session_already_finished))
                     }
                 }
                 is CompleteSetResult.Failure -> {
                     _uiState.update {
-                        it.copy(isCompletingSet = false, errorMessage = res.error.toString())
+                        it.copy(isCompletingSet = false, errorMessage = res.error.toUiText())
                     }
                 }
             }
@@ -209,7 +212,7 @@ class ActiveWorkoutViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isFinishing = false,
-                            finishError = "Complete at least one set before finishing."
+                            finishError = UiText.StringResource(R.string.error_no_completed_sets)
                         )
                     }
                 }
@@ -220,12 +223,12 @@ class ActiveWorkoutViewModel @Inject constructor(
                 }
                 FinishWorkoutResult.SessionNotFound -> {
                     _uiState.update {
-                        it.copy(isFinishing = false, finishError = "Session not found.")
+                        it.copy(isFinishing = false, finishError = UiText.StringResource(R.string.error_session_not_found))
                     }
                 }
                 is FinishWorkoutResult.Failure -> {
                     _uiState.update {
-                        it.copy(isFinishing = false, finishError = res.error.toString())
+                        it.copy(isFinishing = false, finishError = res.error.toUiText())
                     }
                 }
             }

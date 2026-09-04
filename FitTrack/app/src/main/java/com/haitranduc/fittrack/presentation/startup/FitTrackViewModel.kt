@@ -36,7 +36,15 @@ class FitTrackViewModel @Inject constructor(
                     _uiState.value = StartupUiState.Ready
                 }
                 is SeedImportResult.Failure -> {
-                    _uiState.value = StartupUiState.Error(result.error.toString())
+                    val errorText = when (result.error) {
+                        is com.haitranduc.fittrack.domain.repository.SeedImportError.Database -> {
+                            com.haitranduc.fittrack.presentation.util.UiText.StringResource(com.haitranduc.fittrack.R.string.error_database)
+                        }
+                        else -> {
+                            com.haitranduc.fittrack.presentation.util.UiText.StringResource(com.haitranduc.fittrack.R.string.error_startup)
+                        }
+                    }
+                    _uiState.value = StartupUiState.Error(errorText)
                 }
             }
         }

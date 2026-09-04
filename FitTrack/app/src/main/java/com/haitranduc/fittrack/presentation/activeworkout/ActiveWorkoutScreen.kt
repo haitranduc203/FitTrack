@@ -363,7 +363,7 @@ fun ActiveWorkoutContent(
                                 if (errorText != null) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = errorText,
+                                        text = errorText.asString(),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.error
                                     )
@@ -377,7 +377,7 @@ fun ActiveWorkoutContent(
 
                 if (uiState.finishError != null) {
                     Text(
-                        text = uiState.finishError,
+                        text = uiState.finishError.asString(),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -386,7 +386,7 @@ fun ActiveWorkoutContent(
 
                 if (uiState.errorMessage != null) {
                     Text(
-                        text = uiState.errorMessage,
+                        text = uiState.errorMessage.asString(),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(bottom = 8.dp)

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.haitranduc.fittrack.domain.repository.DataResult
 import com.haitranduc.fittrack.domain.repository.WorkoutHistoryRepository
+import com.haitranduc.fittrack.presentation.util.toUiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,7 +52,7 @@ class HistoryViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                errorMessage = result.error.toString()
+                                errorMessage = result.error.toUiText()
                             )
                         }
                     }

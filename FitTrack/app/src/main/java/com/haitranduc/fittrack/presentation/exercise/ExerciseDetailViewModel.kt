@@ -5,14 +5,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.haitranduc.fittrack.domain.repository.DataResult
 import com.haitranduc.fittrack.domain.repository.ExerciseRepository
+import com.haitranduc.fittrack.presentation.util.toUiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
@@ -24,23 +26,30 @@ class ExerciseDetailViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val exerciseIdFlow = MutableStateFlow<String?>(savedStateHandle.get<String>("exerciseId"))
+    private val retryTrigger = MutableStateFlow(0)
 
-    val uiState: StateFlow<ExerciseDetailUiState> = exerciseIdFlow
+    val uiState: StateFlow<ExerciseDetailUiState> = combine(
+        exerciseIdFlow,
+        retryTrigger
+    ) { id, _ -> id }
         .flatMapLatest { id ->
             if (id.isNullOrBlank()) {
                 flowOf(ExerciseDetailUiState(isLoading = false, isMissing = true))
             } else {
-                exerciseRepository.observeExercise(id).map { result ->
-                    when (result) {
-                        is DataResult.Success -> {
-                            if (result.data == null) {
-                                ExerciseDetailUiState(isLoading = false, isMissing = true)
-                            } else {
-                                ExerciseDetailUiState(isLoading = false, exercise = result.data)
+                flow {
+                    emit(ExerciseDetailUiState(isLoading = true))
+                    exerciseRepository.observeExercise(id).collect { result ->
+                        when (result) {
+                            is DataResult.Success -> {
+                                if (result.data == null) {
+                                    emit(ExerciseDetailUiState(isLoading = false, isMissing = true))
+                                } else {
+                                    emit(ExerciseDetailUiState(isLoading = false, exercise = result.data))
+                                }
                             }
-                        }
-                        is DataResult.Failure -> {
-                            ExerciseDetailUiState(isLoading = false, errorMessage = result.error.toString())
+                            is DataResult.Failure -> {
+                                emit(ExerciseDetailUiState(isLoading = false, errorMessage = result.error.toUiText()))
+                            }
                         }
                     }
                 }
@@ -53,8 +62,6 @@ class ExerciseDetailViewModel @Inject constructor(
         )
 
     fun retry() {
-        val current = exerciseIdFlow.value
-        exerciseIdFlow.value = null
-        exerciseIdFlow.value = current
+        retryTrigger.value++
     }
 }

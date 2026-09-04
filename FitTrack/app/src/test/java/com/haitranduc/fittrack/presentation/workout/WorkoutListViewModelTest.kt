@@ -1,8 +1,10 @@
 package com.haitranduc.fittrack.presentation.workout
 
+import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.Exercise
 import com.haitranduc.fittrack.domain.model.Workout
 import com.haitranduc.fittrack.domain.repository.DataError
+import com.haitranduc.fittrack.presentation.util.UiText
 import com.haitranduc.fittrack.testing.FakeWorkoutRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -99,7 +101,7 @@ class WorkoutListViewModelTest {
 
         var state = viewModel.uiState.value
         assertFalse(state.isLoading)
-        assertNotNull(state.errorMessage)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
 
         // Clear error and retry
         workoutRepository.observeError = null
@@ -159,7 +161,7 @@ class WorkoutListViewModelTest {
 
         val state = viewModel.uiState.value
         assertFalse(state.isDeleting)
-        assertNotNull(state.errorMessage)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
         // Workout not removed
         assertEquals(1, state.workouts.size)
     }

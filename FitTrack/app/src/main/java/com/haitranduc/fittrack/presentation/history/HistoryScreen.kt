@@ -118,7 +118,7 @@ fun HistoryContent(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                text = uiState.errorMessage,
+                                text = uiState.errorMessage.asString(),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
