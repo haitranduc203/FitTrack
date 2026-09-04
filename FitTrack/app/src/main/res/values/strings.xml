@@ -146,6 +146,11 @@
     <string name="title_exercise_picker">Add Exercise</string>
     <string name="cd_move_up">Move exercise up</string>
     <string name="cd_move_down">Move exercise down</string>
+    <string name="dialog_delete_workout_title">Delete Workout</string>
+    <string name="dialog_delete_workout_message">Are you sure you want to delete this workout? Completed history will not be lost.</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="cd_delete_workout">Delete workout</string>
 
     <!-- Mock Workout Templates & Reps -->
     <string name="workout_template_push_day">Push Day</string>

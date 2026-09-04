@@ -2,6 +2,7 @@ package com.haitranduc.fittrack.presentation.workout
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,37 +13,68 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.core.designsystem.FitTrackIcons
 import com.haitranduc.fittrack.core.designsystem.theme.FitTrackTheme
+import com.haitranduc.fittrack.domain.model.Exercise
+import com.haitranduc.fittrack.domain.model.Workout
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkoutListScreen(
     onCreateWorkout: () -> Unit,
-    onWorkoutClick: (String) -> Unit,
+    onWorkoutClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    viewModel: WorkoutListViewModel = hiltViewModel()
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    WorkoutListContent(
+        uiState = uiState,
+        onCreateWorkout = onCreateWorkout,
+        onWorkoutClick = onWorkoutClick,
+        onDeleteClick = viewModel::onDeleteRequested,
+        onConfirmDelete = viewModel::onDeleteConfirmed,
+        onDismissDelete = viewModel::onDeleteDismissed,
+        modifier = modifier
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun WorkoutListContent(
+    uiState: WorkoutListUiState,
+    onCreateWorkout: () -> Unit,
+    onWorkoutClick: (Long) -> Unit,
+    onDeleteClick: (Workout) -> Unit,
+    onConfirmDelete: () -> Unit,
+    onDismissDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val templates = WorkoutMockData.templates
-
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -80,7 +112,14 @@ fun WorkoutListScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (templates.isEmpty()) {
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (uiState.workouts.isEmpty()) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -108,11 +147,11 @@ fun WorkoutListScreen(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(templates, key = { it.id }) { template ->
+                    items(uiState.workouts, key = { it.id }) { workout ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onWorkoutClick(template.id) },
+                                .clickable { onWorkoutClick(workout.id) },
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surface
                             ),
@@ -126,30 +165,46 @@ fun WorkoutListScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = stringResource(template.nameRes),
+                                        text = workout.name,
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.weight(1f)
                                     )
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text(
-                                            text = stringResource(
-                                                R.string.label_exercises_count,
-                                                template.exercises.size
-                                            ),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                        )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.primaryContainer,
+                                            shape = RoundedCornerShape(6.dp)
+                                        ) {
+                                            Text(
+                                                text = stringResource(
+                                                    R.string.label_exercises_count,
+                                                    workout.exercises.size
+                                                ),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { onDeleteClick(workout) }
+                                        ) {
+                                            Icon(
+                                                imageVector = FitTrackIcons.Delete,
+                                                contentDescription = stringResource(R.string.cd_delete_workout),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
-                                val exerciseNames = template.exercises.map { stringResource(it.exerciseNameRes) }
+                                val exerciseNames = workout.exercises.map { it.name }
                                 Text(
-                                    text = exerciseNames.joinToString(", "),
+                                    text = if (exerciseNames.isEmpty()) {
+                                        stringResource(R.string.error_workout_exercises_empty)
+                                    } else {
+                                        exerciseNames.joinToString(", ")
+                                    },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -163,12 +218,126 @@ fun WorkoutListScreen(
             }
         }
     }
+
+    if (uiState.workoutToDelete != null) {
+        AlertDialog(
+            onDismissRequest = onDismissDelete,
+            title = {
+                Text(
+                    text = stringResource(R.string.dialog_delete_workout_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.dialog_delete_workout_message),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = onConfirmDelete,
+                    enabled = !uiState.isDeleting
+                ) {
+                    Text(
+                        text = stringResource(R.string.action_delete),
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = onDismissDelete,
+                    enabled = !uiState.isDeleting
+                ) {
+                    Text(text = stringResource(R.string.action_cancel))
+                }
+            }
+        )
+    }
 }
 
-@Preview(showBackground = true, name = "Workout List Screen")
+@Preview(showBackground = true, name = "Workout List - Populated")
 @Composable
-private fun WorkoutListScreenPreview() {
+private fun WorkoutListContentPopulatedPreview() {
     FitTrackTheme {
-        WorkoutListScreen(onCreateWorkout = {}, onWorkoutClick = {})
+        WorkoutListContent(
+            uiState = WorkoutListUiState(
+                isLoading = false,
+                workouts = listOf(
+                    Workout(
+                        id = 1L,
+                        name = "Push Day",
+                        createdAt = 1000L,
+                        updatedAt = 1000L,
+                        exercises = listOf(
+                            Exercise(
+                                id = "e1",
+                                name = "Barbell Bench Press",
+                                bodyPart = "chest",
+                                equipment = "barbell",
+                                target = "pectorals",
+                                muscleGroup = "chest",
+                                secondaryMuscles = emptyList(),
+                                instructions = emptyList()
+                            ),
+                            Exercise(
+                                id = "e2",
+                                name = "Overhead Press",
+                                bodyPart = "shoulders",
+                                equipment = "barbell",
+                                target = "deltoids",
+                                muscleGroup = "shoulders",
+                                secondaryMuscles = emptyList(),
+                                instructions = emptyList()
+                            )
+                        )
+                    ),
+                    Workout(
+                        id = 2L,
+                        name = "Pull Day",
+                        createdAt = 2000L,
+                        updatedAt = 2000L,
+                        exercises = listOf(
+                            Exercise(
+                                id = "e3",
+                                name = "Pull Up",
+                                bodyPart = "back",
+                                equipment = "bodyweight",
+                                target = "latissimus dorsi",
+                                muscleGroup = "back",
+                                secondaryMuscles = emptyList(),
+                                instructions = emptyList()
+                            )
+                        )
+                    )
+                )
+            ),
+            onCreateWorkout = {},
+            onWorkoutClick = {},
+            onDeleteClick = {},
+            onConfirmDelete = {},
+            onDismissDelete = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Workout List - Empty")
+@Composable
+private fun WorkoutListContentEmptyPreview() {
+    FitTrackTheme {
+        WorkoutListContent(
+            uiState = WorkoutListUiState(
+                isLoading = false,
+                workouts = emptyList()
+            ),
+            onCreateWorkout = {},
+            onWorkoutClick = {},
+            onDeleteClick = {},
+            onConfirmDelete = {},
+            onDismissDelete = {}
+        )
     }
 }
