@@ -112,7 +112,7 @@ fun HistoryContent(
                     )
                     StatisticItem(
                         label = stringResource(R.string.stat_sets),
-                        value = stringResource(R.string.stat_placeholder)
+                        value = uiState.totalCompletedSets.toString()
                     )
                     StatisticItem(
                         label = stringResource(R.string.stat_time),
@@ -303,6 +303,7 @@ private fun HistoryContentPopulatedPreview() {
             uiState = HistoryUiState(
                 isLoading = false,
                 totalWorkouts = 2L,
+                totalCompletedSets = 12L,
                 sessions = listOf(
                     WorkoutSession(
                         id = 1L,
@@ -338,6 +339,7 @@ private fun HistoryContentEmptyPreview() {
             uiState = HistoryUiState(
                 isLoading = false,
                 totalWorkouts = 0L,
+                totalCompletedSets = 0L,
                 sessions = emptyList()
             ),
             onSessionClick = {},

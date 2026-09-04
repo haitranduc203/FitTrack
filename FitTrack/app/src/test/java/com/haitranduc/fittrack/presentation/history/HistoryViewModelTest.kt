@@ -135,6 +135,38 @@ class HistoryViewModelTest {
     }
 
     @Test
+    fun observeTotalCompletedSets_empty_showsZero() = runTest {
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(0L, state.totalCompletedSets)
+    }
+
+    @Test
+    fun observeTotalCompletedSets_success_updatesTotalCompletedSets() = runTest {
+        statisticsRepository.setTotalCompletedSets(24L)
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(24L, state.totalCompletedSets)
+    }
+
+    @Test
+    fun observeTotalCompletedSets_failure_showsErrorMessage() = runTest {
+        statisticsRepository.observeTotalCompletedSetsError = DataError.Database(RuntimeException("DB Read Error"))
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
+    }
+
+    @Test
     fun retry_clearsErrorAndReloads() = runTest {
         historyRepository.observeHistoryError = DataError.Database(RuntimeException("DB Read Error"))
         val viewModel = HistoryViewModel(historyRepository, statisticsRepository)

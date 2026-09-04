@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.haitranduc.fittrack.core.database.FitTrackDatabase
+import com.haitranduc.fittrack.data.local.entity.SetLogEntity
 import com.haitranduc.fittrack.data.local.entity.WorkoutSessionEntity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -20,6 +21,7 @@ class StatisticsDaoTest {
     private lateinit var database: FitTrackDatabase
     private lateinit var statisticsDao: StatisticsDao
     private lateinit var workoutSessionDao: WorkoutSessionDao
+    private lateinit var setLogDao: SetLogDao
 
     @Before
     fun setUp() {
@@ -29,6 +31,7 @@ class StatisticsDaoTest {
             .build()
         statisticsDao = database.statisticsDao()
         workoutSessionDao = database.workoutSessionDao()
+        setLogDao = database.setLogDao()
     }
 
     @After
@@ -82,5 +85,104 @@ class StatisticsDaoTest {
 
         val totalAfterFinished2 = statisticsDao.observeTotalWorkouts().first()
         assertEquals(2L, totalAfterFinished2)
+    }
+
+    @Test
+    fun observeTotalCompletedSets_empty_returnsZero() = runBlocking {
+        val total = statisticsDao.observeTotalCompletedSets().first()
+        assertEquals(0L, total)
+    }
+
+    @Test
+    fun observeTotalCompletedSets_countsOnlySetsFromFinishedSessions() = runBlocking {
+        val unfinishedSession = WorkoutSessionEntity(
+            id = 1L,
+            workoutId = null,
+            workoutNameSnapshot = "Unfinished Workout",
+            startedAt = 1000L,
+            finishedAt = null,
+            durationSeconds = null
+        )
+        workoutSessionDao.insertSession(unfinishedSession)
+
+        // Add 2 sets to unfinished session
+        setLogDao.insertSetLog(
+            SetLogEntity(
+                id = 101L,
+                sessionId = 1L,
+                exerciseId = "ex1",
+                exerciseNameSnapshot = "Bench Press",
+                setNumber = 1,
+                reps = 10,
+                weightKg = 60.0,
+                completedAt = 1100L
+            )
+        )
+        setLogDao.insertSetLog(
+            SetLogEntity(
+                id = 102L,
+                sessionId = 1L,
+                exerciseId = "ex1",
+                exerciseNameSnapshot = "Bench Press",
+                setNumber = 2,
+                reps = 8,
+                weightKg = 65.0,
+                completedAt = 1200L
+            )
+        )
+
+        val totalAfterUnfinished = statisticsDao.observeTotalCompletedSets().first()
+        assertEquals(0L, totalAfterUnfinished)
+
+        val finishedSession = WorkoutSessionEntity(
+            id = 2L,
+            workoutId = null,
+            workoutNameSnapshot = "Finished Workout",
+            startedAt = 2000L,
+            finishedAt = 3000L,
+            durationSeconds = 1000L
+        )
+        workoutSessionDao.insertSession(finishedSession)
+
+        // Add 3 sets to finished session
+        setLogDao.insertSetLog(
+            SetLogEntity(
+                id = 201L,
+                sessionId = 2L,
+                exerciseId = "ex1",
+                exerciseNameSnapshot = "Bench Press",
+                setNumber = 1,
+                reps = 10,
+                weightKg = 60.0,
+                completedAt = 2100L
+            )
+        )
+        setLogDao.insertSetLog(
+            SetLogEntity(
+                id = 202L,
+                sessionId = 2L,
+                exerciseId = "ex1",
+                exerciseNameSnapshot = "Bench Press",
+                setNumber = 2,
+                reps = 8,
+                weightKg = 65.0,
+                completedAt = 2200L
+            )
+        )
+        setLogDao.insertSetLog(
+            SetLogEntity(
+                id = 203L,
+                sessionId = 2L,
+                exerciseId = "ex2",
+                exerciseNameSnapshot = "Incline Dumbbell Press",
+                setNumber = 1,
+                reps = 12,
+                weightKg = 22.0,
+                completedAt = 2300L
+            )
+        )
+
+        val totalAfterFinished = statisticsDao.observeTotalCompletedSets().first()
+        assertEquals(3L, totalAfterFinished)
     }
 }

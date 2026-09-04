@@ -20,4 +20,10 @@ class StatisticsRepositoryImpl @Inject constructor(
             .map<Long, DataResult<Long>> { count -> DataResult.Success(count) }
             .catch { e -> emit(DataResult.Failure(DataError.Database(e))) }
     }
+
+    override fun observeTotalCompletedSets(): Flow<DataResult<Long>> {
+        return statisticsDao.observeTotalCompletedSets()
+            .map<Long, DataResult<Long>> { count -> DataResult.Success(count) }
+            .catch { e -> emit(DataResult.Failure(DataError.Database(e))) }
+    }
 }
