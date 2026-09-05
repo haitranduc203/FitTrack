@@ -1,5 +1,6 @@
 package com.haitranduc.fittrack.presentation.workout
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -34,7 +36,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -60,6 +65,23 @@ fun WorkoutEditorScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
+
+    val handleBack: () -> Unit = {
+        if (uiState.hasUnsavedChanges) {
+            showDiscardDialog = true
+        } else {
+            onNavigateUp()
+        }
+    }
+
+    BackHandler(enabled = uiState.isPickerOpen) {
+        viewModel.closeExercisePicker()
+    }
+
+    BackHandler(enabled = !uiState.isPickerOpen && uiState.hasUnsavedChanges) {
+        showDiscardDialog = true
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
@@ -76,6 +98,14 @@ fun WorkoutEditorScreen(
     WorkoutEditorContent(
         uiState = uiState,
         snackbarHostState = snackbarHostState,
+        showDiscardDialog = showDiscardDialog,
+        onConfirmDiscard = {
+            showDiscardDialog = false
+            onNavigateUp()
+        },
+        onDismissDiscard = {
+            showDiscardDialog = false
+        },
         onNameChanged = viewModel::onNameChanged,
         onAddExerciseClick = viewModel::openExercisePicker,
         onRemoveExercise = viewModel::onRemoveExercise,
@@ -86,7 +116,7 @@ fun WorkoutEditorScreen(
         onPickerDismiss = viewModel::closeExercisePicker,
         onPickerQueryChange = viewModel::onPickerQueryChanged,
         onPickerExerciseSelect = viewModel::onExerciseSelected,
-        onNavigateUp = onNavigateUp,
+        onNavigateUp = handleBack,
         modifier = modifier
     )
 }
@@ -106,6 +136,9 @@ fun WorkoutEditorContent(
     onPickerQueryChange: (String) -> Unit,
     onPickerExerciseSelect: (Exercise) -> Unit,
     onNavigateUp: () -> Unit,
+    showDiscardDialog: Boolean = false,
+    onConfirmDiscard: () -> Unit = {},
+    onDismissDiscard: () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     modifier: Modifier = Modifier
 ) {
@@ -413,6 +446,39 @@ fun WorkoutEditorContent(
         onExerciseSelect = onPickerExerciseSelect,
         onDismiss = onPickerDismiss
     )
+
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = onDismissDiscard,
+            title = {
+                Text(
+                    text = stringResource(R.string.dialog_discard_changes_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.dialog_discard_changes_message),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onConfirmDiscard) {
+                    Text(
+                        text = stringResource(R.string.action_discard),
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissDiscard) {
+                    Text(text = stringResource(R.string.action_keep_editing))
+                }
+            }
+        )
+    }
 }
 
 @Preview(showBackground = true, name = "Workout Editor - Create Mode")

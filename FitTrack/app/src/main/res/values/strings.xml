@@ -231,4 +231,10 @@
     <string name="msg_favorite_added">Added to favorites.</string>
     <string name="msg_favorite_removed">Removed from favorites.</string>
     <string name="msg_workout_saved">Workout saved.</string>
+
+    <!-- Discard Changes Dialog -->
+    <string name="dialog_discard_changes_title">Discard changes?</string>
+    <string name="dialog_discard_changes_message">You have unsaved changes. Are you sure you want to discard them?</string>
+    <string name="action_discard">Discard</string>
+    <string name="action_keep_editing">Keep editing</string>
 </resources>

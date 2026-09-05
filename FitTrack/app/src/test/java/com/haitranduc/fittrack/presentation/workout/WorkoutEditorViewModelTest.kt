@@ -397,4 +397,39 @@ class WorkoutEditorViewModelTest {
         assertEquals(1, eventsReceived.size)
         job.cancel()
     }
+
+    @Test
+    fun hasUnsavedChanges_tracksModificationsCorrectly() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+
+        viewModel.onNameChanged("My New Workout")
+        assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+
+        viewModel.onNameChanged("")
+        assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+
+        viewModel.onExerciseSelected(exerciseA)
+        assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+
+        viewModel.onRemoveExercise(0)
+        assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+    }
+
+    @Test
+    fun hasUnsavedChanges_resetsAfterSuccessfulSave() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.onNameChanged("Leg Day")
+        viewModel.onExerciseSelected(exerciseA)
+        assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+
+        viewModel.onSaveClicked()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+    }
 }

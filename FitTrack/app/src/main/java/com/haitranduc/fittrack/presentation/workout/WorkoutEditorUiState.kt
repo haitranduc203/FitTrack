@@ -15,7 +15,8 @@ data class WorkoutEditorUiState(
     val isPickerOpen: Boolean = false,
     val pickerExercises: List<Exercise> = emptyList(),
     val pickerQuery: String = "",
-    val errorMessage: UiText? = null
+    val errorMessage: UiText? = null,
+    val hasUnsavedChanges: Boolean = false
 )
 
 sealed interface WorkoutEditorEvent {

@@ -271,7 +271,7 @@ fun WorkoutListContent(
 
     if (uiState.workoutToDelete != null) {
         AlertDialog(
-            onDismissRequest = onDismissDelete,
+            onDismissRequest = { if (!uiState.isDeleting) onDismissDelete() },
             title = {
                 Text(
                     text = stringResource(R.string.dialog_delete_workout_title),

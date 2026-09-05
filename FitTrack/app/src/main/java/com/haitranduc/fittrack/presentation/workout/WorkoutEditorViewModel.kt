@@ -44,6 +44,15 @@ class WorkoutEditorViewModel @Inject constructor(
     private val rawWorkoutId: String? = savedStateHandle.get<String>("workoutId")
     private var originalCreatedAt: Long = 0L
 
+    private var initialWorkoutName: String = ""
+    private var initialExercises: List<Exercise> = emptyList()
+    private var isInitialized: Boolean = false
+
+    private fun checkHasChanges(name: String, exercises: List<Exercise>): Boolean {
+        if (!isInitialized) return false
+        return name != initialWorkoutName || exercises.map { it.id } != initialExercises.map { it.id }
+    }
+
     private val _uiState = MutableStateFlow(WorkoutEditorUiState())
     val uiState: StateFlow<WorkoutEditorUiState> = _uiState.asStateFlow()
 
@@ -60,13 +69,17 @@ class WorkoutEditorViewModel @Inject constructor(
     private fun initializeWorkout() {
         if (rawWorkoutId == null) {
             // Create mode
+            initialWorkoutName = ""
+            initialExercises = emptyList()
+            isInitialized = true
             _uiState.update {
                 it.copy(
                     isLoading = false,
                     isMissing = false,
                     workoutId = null,
                     workoutName = "",
-                    exercises = emptyList()
+                    exercises = emptyList(),
+                    hasUnsavedChanges = false
                 )
             }
         } else {
@@ -83,6 +96,11 @@ class WorkoutEditorViewModel @Inject constructor(
                                 if (workout == null) {
                                     _uiState.update { it.copy(isLoading = false, isMissing = true) }
                                 } else {
+                                    if (!isInitialized) {
+                                        initialWorkoutName = workout.name
+                                        initialExercises = workout.exercises
+                                        isInitialized = true
+                                    }
                                     originalCreatedAt = workout.createdAt
                                     _uiState.update {
                                         it.copy(
@@ -91,7 +109,8 @@ class WorkoutEditorViewModel @Inject constructor(
                                             workoutId = workout.id,
                                             workoutName = workout.name,
                                             exercises = workout.exercises,
-                                            errorMessage = null
+                                            errorMessage = null,
+                                            hasUnsavedChanges = checkHasChanges(workout.name, workout.exercises)
                                         )
                                     }
                                 }
@@ -127,7 +146,11 @@ class WorkoutEditorViewModel @Inject constructor(
 
     fun onNameChanged(name: String) {
         _uiState.update {
-            it.copy(workoutName = name, nameErrorRes = null)
+            it.copy(
+                workoutName = name,
+                nameErrorRes = null,
+                hasUnsavedChanges = checkHasChanges(name, it.exercises)
+            )
         }
     }
 
@@ -151,11 +174,13 @@ class WorkoutEditorViewModel @Inject constructor(
                 it.copy(exerciseErrorRes = R.string.error_workout_exercise_duplicate)
             }
         } else {
+            val updated = currentList + exercise
             _uiState.update {
                 it.copy(
-                    exercises = currentList + exercise,
+                    exercises = updated,
                     exerciseErrorRes = null,
-                    isPickerOpen = false
+                    isPickerOpen = false,
+                    hasUnsavedChanges = checkHasChanges(it.workoutName, updated)
                 )
             }
         }
@@ -165,7 +190,12 @@ class WorkoutEditorViewModel @Inject constructor(
         val currentList = _uiState.value.exercises
         if (index in currentList.indices) {
             val updated = currentList.toMutableList().apply { removeAt(index) }
-            _uiState.update { it.copy(exercises = updated) }
+            _uiState.update {
+                it.copy(
+                    exercises = updated,
+                    hasUnsavedChanges = checkHasChanges(it.workoutName, updated)
+                )
+            }
         }
     }
 
@@ -174,7 +204,12 @@ class WorkoutEditorViewModel @Inject constructor(
         if (index > 0 && index < currentList.size) {
             val item = currentList.removeAt(index)
             currentList.add(index - 1, item)
-            _uiState.update { it.copy(exercises = currentList) }
+            _uiState.update {
+                it.copy(
+                    exercises = currentList,
+                    hasUnsavedChanges = checkHasChanges(it.workoutName, currentList)
+                )
+            }
         }
     }
 
@@ -183,7 +218,12 @@ class WorkoutEditorViewModel @Inject constructor(
         if (index >= 0 && index < currentList.size - 1) {
             val item = currentList.removeAt(index)
             currentList.add(index + 1, item)
-            _uiState.update { it.copy(exercises = currentList) }
+            _uiState.update {
+                it.copy(
+                    exercises = currentList,
+                    hasUnsavedChanges = checkHasChanges(it.workoutName, currentList)
+                )
+            }
         }
     }
 
@@ -225,6 +265,7 @@ class WorkoutEditorViewModel @Inject constructor(
                 )
                 when (val result = saveWorkoutUseCase(workout)) {
                     is SaveWorkoutResult.Success -> {
+                        _uiState.update { it.copy(hasUnsavedChanges = false) }
                         _events.send(WorkoutEditorEvent.NavigateBack(result.workoutId))
                     }
                     is SaveWorkoutResult.InvalidName -> {
@@ -299,6 +340,7 @@ class WorkoutEditorViewModel @Inject constructor(
                 )
                 when (val saveResult = saveWorkoutUseCase(workout)) {
                     is SaveWorkoutResult.Success -> {
+                        _uiState.update { it.copy(hasUnsavedChanges = false) }
                         val workoutId = saveResult.workoutId
                         when (val startResult = startWorkoutUseCase(workoutId)) {
                             is StartWorkoutResult.Success -> {
