@@ -435,3 +435,26 @@ private fun WorkoutEditorEditPreview() {
         )
     }
 }
+
+@Preview(showBackground = true, name = "Workout Editor - Loading")
+@Composable
+private fun WorkoutEditorLoadingPreview() {
+    FitTrackTheme {
+        WorkoutEditorContent(
+            uiState = WorkoutEditorUiState(
+                isLoading = true
+            ),
+            onNameChanged = {},
+            onAddExerciseClick = {},
+            onRemoveExercise = {},
+            onMoveUp = {},
+            onMoveDown = {},
+            onSaveClick = {},
+            onStartClick = {},
+            onPickerDismiss = {},
+            onPickerQueryChange = {},
+            onPickerExerciseSelect = {},
+            onNavigateUp = {}
+        )
+    }
+}

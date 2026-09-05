@@ -361,3 +361,21 @@ private fun HistoryContentEmptyPreview() {
         )
     }
 }
+
+@Preview(showBackground = true, name = "History Screen - Loading")
+@Composable
+private fun HistoryContentLoadingPreview() {
+    FitTrackTheme {
+        HistoryContent(
+            uiState = HistoryUiState(
+                isLoading = true,
+                totalWorkouts = 0L,
+                totalCompletedSets = 0L,
+                totalTrainingTimeSeconds = 0L,
+                sessions = emptyList()
+            ),
+            onSessionClick = {},
+            onRetry = {}
+        )
+    }
+}

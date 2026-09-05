@@ -34,6 +34,8 @@ class ExerciseDetailViewModel @Inject constructor(
     private val favoriteErrorMessage = MutableStateFlow<UiText?>(null)
     private val retryTrigger = MutableStateFlow(0)
 
+    private var lastExercise: com.haitranduc.fittrack.domain.model.Exercise? = null
+
     val uiState: StateFlow<ExerciseDetailUiState> = combine(
         exerciseIdFlow,
         retryTrigger
@@ -43,7 +45,7 @@ class ExerciseDetailViewModel @Inject constructor(
                 flowOf(ExerciseDetailUiState(isLoading = false, isMissing = true))
             } else {
                 flow {
-                    emit(ExerciseDetailUiState(isLoading = true))
+                    emit(ExerciseDetailUiState(isLoading = lastExercise == null, exercise = lastExercise))
 
                     combine(
                         exerciseRepository.observeExercise(id),
@@ -54,8 +56,10 @@ class ExerciseDetailViewModel @Inject constructor(
                         when (exerciseResult) {
                             is DataResult.Success -> {
                                 if (exerciseResult.data == null) {
+                                    lastExercise = null
                                     ExerciseDetailUiState(isLoading = false, isMissing = true)
                                 } else {
+                                    lastExercise = exerciseResult.data
                                     val isFav: Boolean?
                                     val favErrorToSurface: UiText?
                                     when (favoriteIdsResult) {
@@ -80,6 +84,7 @@ class ExerciseDetailViewModel @Inject constructor(
                             is DataResult.Failure -> {
                                 ExerciseDetailUiState(
                                     isLoading = false,
+                                    exercise = lastExercise,
                                     errorMessage = exerciseResult.error.toUiText(),
                                     isTogglingFavorite = toggling,
                                     favoriteErrorMessage = favError

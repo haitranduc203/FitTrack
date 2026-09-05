@@ -34,7 +34,12 @@ class WorkoutListViewModel @Inject constructor(
     private fun observeWorkouts() {
         viewModelScope.launch {
             retryTrigger.flatMapLatest {
-                _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+                _uiState.update { current ->
+                    current.copy(
+                        isLoading = current.workouts.isEmpty(),
+                        errorMessage = null
+                    )
+                }
                 workoutRepository.observeWorkouts()
             }.collect { result ->
                 when (result) {
@@ -51,7 +56,6 @@ class WorkoutListViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                workouts = emptyList(),
                                 errorMessage = result.error.toUiText()
                             )
                         }

@@ -371,3 +371,21 @@ private fun WorkoutListContentEmptyPreview() {
         )
     }
 }
+
+@Preview(showBackground = true, name = "Workout List - Loading")
+@Composable
+private fun WorkoutListContentLoadingPreview() {
+    FitTrackTheme {
+        WorkoutListContent(
+            uiState = WorkoutListUiState(
+                isLoading = true,
+                workouts = emptyList()
+            ),
+            onCreateWorkout = {},
+            onWorkoutClick = {},
+            onDeleteClick = {},
+            onConfirmDelete = {},
+            onDismissDelete = {}
+        )
+    }
+}

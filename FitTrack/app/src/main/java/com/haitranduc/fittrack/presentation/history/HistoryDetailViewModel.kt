@@ -52,7 +52,7 @@ class HistoryDetailViewModel @Inject constructor(
         }
 
         observeJob?.cancel()
-        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        _uiState.update { current -> current.copy(isLoading = current.session == null, errorMessage = null) }
 
         observeJob = viewModelScope.launch {
             workoutHistoryRepository.observeSession(sid).collect { result ->

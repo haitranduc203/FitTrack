@@ -2,6 +2,7 @@ package com.haitranduc.fittrack.presentation.exercise
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.haitranduc.fittrack.domain.model.Exercise
 import com.haitranduc.fittrack.domain.repository.DataResult
 import com.haitranduc.fittrack.domain.repository.ExerciseRepository
 import com.haitranduc.fittrack.domain.repository.FavoriteExerciseRepository
@@ -51,6 +52,8 @@ class ExerciseListViewModel @Inject constructor(
         val isFavoritesOnly: Boolean
     )
 
+    private var lastLoadedExercises: List<Exercise> = emptyList()
+
     val uiState: StateFlow<ExerciseListUiState> = combine(
         filtersFlow,
         retryTrigger
@@ -59,8 +62,8 @@ class ExerciseListViewModel @Inject constructor(
             flow {
                 emit(
                     ExerciseListUiState(
-                        isLoading = true,
-                        exercises = emptyList(),
+                        isLoading = lastLoadedExercises.isEmpty(),
+                        exercises = lastLoadedExercises,
                         searchQuery = filters.query,
                         selectedBodyPart = filters.bodyPart,
                         selectedEquipment = filters.equipment,
@@ -91,6 +94,7 @@ class ExerciseListViewModel @Inject constructor(
                             } else {
                                 rawExercises
                             }
+                            lastLoadedExercises = displayedExercises
                             val errorMsg = if (favoriteIdsResult is DataResult.Failure && favError == null) {
                                 favoriteIdsResult.error.toUiText()
                             } else {
@@ -112,7 +116,7 @@ class ExerciseListViewModel @Inject constructor(
                         is DataResult.Failure -> {
                             ExerciseListUiState(
                                 isLoading = false,
-                                exercises = emptyList(),
+                                exercises = lastLoadedExercises,
                                 searchQuery = filters.query,
                                 selectedBodyPart = filters.bodyPart,
                                 selectedEquipment = filters.equipment,

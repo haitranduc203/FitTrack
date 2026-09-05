@@ -270,3 +270,18 @@ private fun SettingsScreenErrorPreview() {
         )
     }
 }
+
+@Preview(showBackground = true, name = "Settings Screen - Loading")
+@Composable
+private fun SettingsScreenLoadingPreview() {
+    FitTrackTheme {
+        SettingsContent(
+            uiState = SettingsUiState(
+                isLoading = true
+            ),
+            onThemeSelected = {},
+            onClearError = {},
+            onRetry = {}
+        )
+    }
+}

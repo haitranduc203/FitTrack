@@ -430,3 +430,24 @@ private fun ExerciseListScreenPreview() {
         )
     }
 }
+
+@Preview(showBackground = true, name = "Exercise List Screen - Loading")
+@Composable
+private fun ExerciseListScreenLoadingPreview() {
+    FitTrackTheme {
+        ExerciseListContent(
+            uiState = ExerciseListUiState(
+                isLoading = true,
+                exercises = emptyList()
+            ),
+            onSearchQueryChange = {},
+            onBodyPartSelect = {},
+            onEquipmentSelect = {},
+            onToggleFavoritesFilter = {},
+            onToggleFavorite = {},
+            onClearFavoriteError = {},
+            onExerciseClick = {},
+            onRetry = {}
+        )
+    }
+}

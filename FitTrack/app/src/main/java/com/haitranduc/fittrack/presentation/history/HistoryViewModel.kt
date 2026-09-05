@@ -37,7 +37,7 @@ class HistoryViewModel @Inject constructor(
 
     private fun loadHistory() {
         observeJob?.cancel()
-        _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+        _uiState.update { current -> current.copy(isLoading = current.sessions.isEmpty(), errorMessage = null) }
 
         observeJob = viewModelScope.launch {
             combine(
@@ -78,10 +78,10 @@ class HistoryViewModel @Inject constructor(
                     is DataResult.Failure -> {
                         HistoryUiState(
                             isLoading = false,
-                            sessions = emptyList(),
-                            totalWorkouts = 0L,
-                            totalCompletedSets = 0L,
-                            totalTrainingTimeSeconds = 0L,
+                            sessions = _uiState.value.sessions,
+                            totalWorkouts = _uiState.value.totalWorkouts,
+                            totalCompletedSets = _uiState.value.totalCompletedSets,
+                            totalTrainingTimeSeconds = _uiState.value.totalTrainingTimeSeconds,
                             errorMessage = historyResult.error.toUiText()
                         )
                     }

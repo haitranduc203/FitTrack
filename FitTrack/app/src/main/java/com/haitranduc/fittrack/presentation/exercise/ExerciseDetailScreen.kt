@@ -391,3 +391,19 @@ private fun ExerciseDetailScreenPreview() {
         )
     }
 }
+
+@Preview(showBackground = true, name = "Exercise Detail Screen - Loading")
+@Composable
+private fun ExerciseDetailScreenLoadingPreview() {
+    FitTrackTheme {
+        ExerciseDetailContent(
+            uiState = ExerciseDetailUiState(
+                isLoading = true
+            ),
+            onNavigateUp = {},
+            onToggleFavorite = {},
+            onClearFavoriteError = {},
+            onRetry = {}
+        )
+    }
+}

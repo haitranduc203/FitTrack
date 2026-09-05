@@ -350,3 +350,18 @@ private fun HistoryDetailMissingPreview() {
         )
     }
 }
+
+@Preview(showBackground = true, name = "History Detail Screen - Loading")
+@Composable
+private fun HistoryDetailLoadingPreview() {
+    FitTrackTheme {
+        HistoryDetailContent(
+            uiState = HistoryDetailUiState(
+                isLoading = true,
+                session = null
+            ),
+            onNavigateUp = {},
+            onRetry = {}
+        )
+    }
+}
