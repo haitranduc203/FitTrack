@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isNotSelected
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -12,8 +13,12 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextClearance
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.printToLog
 import androidx.room.Room
 import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.test.core.app.ApplicationProvider
@@ -35,6 +40,14 @@ class FitTrackNavigationTest {
     private val context: Context
         get() = ApplicationProvider.getApplicationContext()
 
+    private val testDb: FitTrackDatabase by lazy {
+        Room.databaseBuilder(
+            context,
+            FitTrackDatabase::class.java,
+            "fittrack.db"
+        ).build()
+    }
+
     private fun waitUntilReady() {
         val titleExercises = context.getString(R.string.title_exercises)
         val navExercises = context.getString(R.string.nav_exercises)
@@ -55,19 +68,11 @@ class FitTrackNavigationTest {
             composeTestRule.onAllNodesWithText(titleExercises).fetchSemanticsNodes().isNotEmpty()
         }
 
-        // Reset search query if it was modified by a prior test
-        val searchNodes = composeTestRule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes()
-        if (searchNodes.isNotEmpty()) {
-            composeTestRule.onNode(hasSetTextAction()).performTextReplacement("")
-        }
-
-        // Reset filter chips to "All" if present
-        val allChips = composeTestRule.onAllNodesWithText(filterAll).fetchSemanticsNodes()
-        if (allChips.isNotEmpty()) {
-            composeTestRule.onAllNodesWithText(filterAll).onFirst().performClick()
-            if (allChips.size > 1) {
-                composeTestRule.onAllNodesWithText(filterAll).onLast().performClick()
-            }
+        // Reset filter chips to "All" ONLY if not already selected
+        val unselectedAllChips = composeTestRule.onAllNodes(hasText(filterAll) and isNotSelected()).fetchSemanticsNodes()
+        if (unselectedAllChips.isNotEmpty()) {
+            composeTestRule.onAllNodes(hasText(filterAll) and isNotSelected()).onFirst().performClick()
+            composeTestRule.waitForIdle()
         }
         composeTestRule.waitForIdle()
     }
@@ -167,15 +172,18 @@ class FitTrackNavigationTest {
         composeTestRule.onNodeWithText(btnStartWorkout).performClick()
 
         // 5. Active Workout Screen
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
             composeTestRule.onAllNodesWithText(titleActiveWorkout).fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithText(titleActiveWorkout).assertIsDisplayed()
         composeTestRule.onNodeWithText(btnFinishWorkout).assertIsDisplayed()
 
         // 6. Complete a set
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithContentDescription(cdSetDone).fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithContentDescription(cdSetDone).performClick()
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
             composeTestRule.onAllNodesWithText("1").fetchSemanticsNodes().isNotEmpty()
         }
 
@@ -183,7 +191,7 @@ class FitTrackNavigationTest {
         composeTestRule.onNodeWithText(btnFinishWorkout).performClick()
 
         // 8. Navigates to History Detail
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
             composeTestRule.onAllNodesWithText(titleHistoryDetail).fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithText(titleHistoryDetail).assertIsDisplayed()
@@ -208,34 +216,83 @@ class FitTrackNavigationTest {
         val titleHistoryDetail = context.getString(R.string.title_history_detail)
         val cdNavigateUp = context.getString(R.string.cd_navigate_up)
 
+        val now = System.currentTimeMillis()
+        runBlocking {
+            val active = testDb.workoutSessionDao().getActiveSession()
+            if (active != null) {
+                testDb.workoutSessionDao().updateSession(active.copy(finishedAt = now, durationSeconds = 60L))
+            }
+            val sid = testDb.workoutSessionDao().insertSession(
+                com.haitranduc.fittrack.data.local.entity.WorkoutSessionEntity(
+                    id = 0L,
+                    workoutId = null,
+                    workoutNameSnapshot = pushDayName,
+                    startedAt = now - 60_000,
+                    finishedAt = now,
+                    durationSeconds = 60L
+                )
+            )
+            testDb.setLogDao().insertSetLog(
+                com.haitranduc.fittrack.data.local.entity.SetLogEntity(
+                    id = 0L,
+                    sessionId = sid,
+                    exerciseId = "0025",
+                    exerciseNameSnapshot = "3/4 sit-up",
+                    setNumber = 1,
+                    reps = 10,
+                    weightKg = 50.0,
+                    completedAt = now
+                )
+            )
+        }
+
         // Navigate to History tab via bottom bar
         composeTestRule.onAllNodesWithText(navHistory).onLast().performClick()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(titleHistory).fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onAllNodesWithText(titleHistory).onFirst().assertIsDisplayed()
 
         // Click on Push Day history item
         composeTestRule.onAllNodesWithText(pushDayName).onFirst().performClick()
 
         // Verify on History Detail screen
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(titleHistoryDetail).fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithText(titleHistoryDetail).assertIsDisplayed()
 
         // Navigate back
         composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
 
         // Verify back on History list
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(titleHistory).fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onAllNodesWithText(titleHistory).onFirst().assertIsDisplayed()
 
         // Return to Exercises tab
         val navExercises = context.getString(R.string.nav_exercises)
+        val titleExercises = context.getString(R.string.title_exercises)
         composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(titleExercises).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.waitForIdle()
     }
 
     @Test
     fun test_searchNonMatchingQuery_showsEmptyState() {
         waitUntilReady()
 
+        // Wait until initial exercise list is populated before searching
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText("3/4 sit-up").fetchSemanticsNodes().isNotEmpty()
+        }
+
         val emptyExercisesText = context.getString(R.string.empty_exercises)
 
-        // Enter non-matching search query using performTextReplacement
+        // Enter non-matching search query
         composeTestRule.onNode(hasSetTextAction()).performTextReplacement("XYZNonExistentExercise123")
 
         // Verify empty state is displayed
@@ -269,8 +326,12 @@ class FitTrackNavigationTest {
 
         // Clean up
         val filterAll = context.getString(R.string.filter_all)
-        composeTestRule.onAllNodesWithText(filterAll).onFirst().performClick()
-        composeTestRule.onNode(hasSetTextAction()).performTextReplacement("")
+        val unselectedAll = composeTestRule.onAllNodes(hasText(filterAll) and isNotSelected()).fetchSemanticsNodes()
+        if (unselectedAll.isNotEmpty()) {
+            composeTestRule.onAllNodes(hasText(filterAll) and isNotSelected()).onFirst().performClick()
+        }
+        composeTestRule.onNode(hasSetTextAction()).performTextClearance()
+        composeTestRule.waitForIdle()
     }
 
     @Test
@@ -365,92 +426,82 @@ class FitTrackNavigationTest {
         val btnFinishWorkout = context.getString(R.string.btn_finish_workout)
         val titleHistoryDetail = context.getString(R.string.title_history_detail)
 
-        val testDb = Room.databaseBuilder(
-            context,
-            FitTrackDatabase::class.java,
-            "fittrack.db"
-        ).build()
-
-        try {
-            // 1. Navigate to Workouts tab
-            composeTestRule.onAllNodesWithText(navWorkouts).onLast().performClick()
-            composeTestRule.waitUntil(timeoutMillis = 15_000) {
-                composeTestRule.onAllNodesWithText(titleWorkouts).fetchSemanticsNodes().isNotEmpty()
-            }
-
-            // 2. Create a workout template
-            val uniqueWorkoutName = "Resume Test " + System.currentTimeMillis()
-            composeTestRule.onNodeWithContentDescription(cdCreateWorkout).performClick()
-            composeTestRule.onNode(hasSetTextAction()).performTextReplacement(uniqueWorkoutName)
-            composeTestRule.onNodeWithText(btnAddExercise).performClick()
-            composeTestRule.waitUntil(timeoutMillis = 15_000) {
-                composeTestRule.onAllNodesWithText("3/4 sit-up").fetchSemanticsNodes().isNotEmpty()
-            }
-            composeTestRule.onNodeWithText("3/4 sit-up").performClick()
-
-            // 3. Start workout
-            composeTestRule.onNodeWithText(btnStartWorkout).performClick()
-            composeTestRule.waitUntil(timeoutMillis = 15_000) {
-                composeTestRule.onAllNodesWithText(titleActiveWorkout).fetchSemanticsNodes().isNotEmpty()
-            }
-            composeTestRule.onNodeWithText(titleActiveWorkout).assertIsDisplayed()
-
-            // 4. Record initial session ID from repository
-            val firstActiveSession = runBlocking {
-                testDb.workoutSessionDao().getActiveSession()
-            }
-            val firstSessionId = firstActiveSession?.id ?: -1L
-            assertTrue("Session ID must be positive", firstSessionId > 0L)
-
-            // 5. Back out of Active Workout
-            composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
-            composeTestRule.waitForIdle()
-
-            // 6. Click Start again (from editor or reopen if back to workouts)
-            val startNodes = composeTestRule.onAllNodesWithText(btnStartWorkout).fetchSemanticsNodes()
-            if (startNodes.isEmpty()) {
-                composeTestRule.onNodeWithText(uniqueWorkoutName).performClick()
-                composeTestRule.waitUntil(timeoutMillis = 15_000) {
-                    composeTestRule.onAllNodesWithText(btnStartWorkout).fetchSemanticsNodes().isNotEmpty()
-                }
-            }
-            composeTestRule.onNodeWithText(btnStartWorkout).performClick()
-
-            // 7. Verify navigated to Active Workout
-            composeTestRule.waitUntil(timeoutMillis = 15_000) {
-                composeTestRule.onAllNodesWithText(titleActiveWorkout).fetchSemanticsNodes().isNotEmpty()
-            }
-            composeTestRule.onNodeWithText(titleActiveWorkout).assertIsDisplayed()
-
-            // 8. Confirm navigation resumed the exact same session ID
-            val secondActiveSession = runBlocking {
-                testDb.workoutSessionDao().getActiveSession()
-            }
-            assertEquals(firstSessionId, secondActiveSession?.id)
-
-            // 9. Confirm database still has only ONE unfinished session
-            val cursor = testDb.query(
-                SimpleSQLiteQuery("SELECT COUNT(*) FROM workout_sessions WHERE finishedAt IS NULL")
-            )
-            cursor.moveToFirst()
-            val unfinishedCount = cursor.getInt(0)
-            cursor.close()
-            assertEquals(1, unfinishedCount)
-
-            // 10. Clean up: complete set and finish so session is closed
-            composeTestRule.onNodeWithContentDescription(cdSetDone).performClick()
-            composeTestRule.waitUntil(timeoutMillis = 15_000) {
-                composeTestRule.onAllNodesWithText("1").fetchSemanticsNodes().isNotEmpty()
-            }
-            composeTestRule.onNodeWithText(btnFinishWorkout).performClick()
-            composeTestRule.waitUntil(timeoutMillis = 15_000) {
-                composeTestRule.onAllNodesWithText(titleHistoryDetail).fetchSemanticsNodes().isNotEmpty()
-            }
-            composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
-            composeTestRule.waitForIdle()
-        } finally {
-            testDb.close()
+        // 1. Navigate to Workouts tab
+        composeTestRule.onAllNodesWithText(navWorkouts).onLast().performClick()
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText(titleWorkouts).fetchSemanticsNodes().isNotEmpty()
         }
+
+        // 2. Create a workout template
+        val uniqueWorkoutName = "Resume Test " + System.currentTimeMillis()
+        composeTestRule.onNodeWithContentDescription(cdCreateWorkout).performClick()
+        composeTestRule.onNode(hasSetTextAction()).performTextReplacement(uniqueWorkoutName)
+        composeTestRule.onNodeWithText(btnAddExercise).performClick()
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText("3/4 sit-up").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("3/4 sit-up").performClick()
+
+        // 3. Start workout
+        composeTestRule.onNodeWithText(btnStartWorkout).performClick()
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText(titleActiveWorkout).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(titleActiveWorkout).assertIsDisplayed()
+
+        // 4. Record initial session ID from repository
+        val firstActiveSession = runBlocking {
+            testDb.workoutSessionDao().getActiveSession()
+        }
+        val firstSessionId = firstActiveSession?.id ?: -1L
+        assertTrue("Session ID must be positive", firstSessionId > 0L)
+
+        // 5. Back out of Active Workout
+        composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
+        composeTestRule.waitForIdle()
+
+        // 6. Click Start again (from editor or reopen if back to workouts)
+        val startNodes = composeTestRule.onAllNodesWithText(btnStartWorkout).fetchSemanticsNodes()
+        if (startNodes.isEmpty()) {
+            composeTestRule.onNodeWithText(uniqueWorkoutName).performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(btnStartWorkout).fetchSemanticsNodes().isNotEmpty()
+            }
+        }
+        composeTestRule.onNodeWithText(btnStartWorkout).performClick()
+
+        // 7. Verify navigated to Active Workout
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText(titleActiveWorkout).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(titleActiveWorkout).assertIsDisplayed()
+
+        // 8. Confirm navigation resumed the exact same session ID
+        val secondActiveSession = runBlocking {
+            testDb.workoutSessionDao().getActiveSession()
+        }
+        assertEquals(firstSessionId, secondActiveSession?.id)
+
+        // 9. Confirm database still has only ONE unfinished session
+        val cursor = testDb.query(
+            androidx.sqlite.db.SimpleSQLiteQuery("SELECT COUNT(*) FROM workout_sessions WHERE finishedAt IS NULL")
+        )
+        cursor.moveToFirst()
+        val unfinishedCount = cursor.getInt(0)
+        cursor.close()
+        assertEquals(1, unfinishedCount)
+
+        // 10. Clean up: complete set and finish so session is closed
+        composeTestRule.onNodeWithContentDescription(cdSetDone).performClick()
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText("1").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(btnFinishWorkout).performClick()
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText(titleHistoryDetail).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
+        composeTestRule.waitForIdle()
     }
 
     @Test

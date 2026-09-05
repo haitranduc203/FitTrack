@@ -33,15 +33,24 @@ class M3CriticalFlowTest {
 
     private fun waitUntilReady() {
         val titleExercises = context.getString(R.string.title_exercises)
+        val navExercises = context.getString(R.string.nav_exercises)
         val cdNavigateUp = context.getString(R.string.cd_navigate_up)
 
-        // Clear any open screen back to root if needed
+        // Clear any open child screen back to root if needed
         val backNodes = composeTestRule.onAllNodesWithContentDescription(cdNavigateUp).fetchSemanticsNodes()
         if (backNodes.isNotEmpty()) {
             composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
+            composeTestRule.waitForIdle()
         }
 
-        // Wait for database exercise seed to be ready
+        // If bottom bar is visible, navigate to Exercises tab
+        val navNodes = composeTestRule.onAllNodesWithText(navExercises).fetchSemanticsNodes()
+        if (navNodes.isNotEmpty()) {
+            composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
+            composeTestRule.waitForIdle()
+        }
+
+        // Wait for database exercise seed to be ready and Exercises title to appear
         composeTestRule.waitUntil(timeoutMillis = 30_000) {
             composeTestRule.onAllNodesWithText(titleExercises).fetchSemanticsNodes().isNotEmpty()
         }
@@ -128,15 +137,31 @@ class M3CriticalFlowTest {
 
         // 11. Complete Set
         composeTestRule.onNodeWithContentDescription(cdSetDone).performClick()
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
             composeTestRule.onAllNodesWithText("1").fetchSemanticsNodes().isNotEmpty()
         }
+
+        // M4: 90-second rest timer is visible
+        val labelRestTimer = context.getString(R.string.label_rest_timer)
+        val btnSkipRest = context.getString(R.string.btn_skip_rest)
+        val restTimerFormat = context.getString(R.string.rest_timer_format, 1L, 30L)
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(labelRestTimer).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(labelRestTimer).assertIsDisplayed()
+        composeTestRule.onNodeWithText(restTimerFormat).assertIsDisplayed()
+        composeTestRule.onNodeWithText(btnSkipRest).assertIsDisplayed()
+
+        // M4: Skip hides/stops the rest timer without waiting 90 real seconds
+        composeTestRule.onNodeWithText(btnSkipRest).performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText(labelRestTimer).assertDoesNotExist()
 
         // 12. Finish Workout
         composeTestRule.onNodeWithText(btnFinishWorkout).performClick()
 
         // 13. Verify navigated to History Detail
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
             composeTestRule.onAllNodesWithText(titleHistoryDetail).fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithText(titleHistoryDetail).assertIsDisplayed()
@@ -153,10 +178,18 @@ class M3CriticalFlowTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onAllNodesWithText(navHistory).onLast().performClick()
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
             composeTestRule.onAllNodesWithText(titleHistory).fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
+
+        // M4: History shows at least one workout, completed-set count, and a nonnegative formatted training duration
+        val statWorkouts = context.getString(R.string.stat_workouts)
+        val statSets = context.getString(R.string.stat_sets)
+        val statTime = context.getString(R.string.stat_time)
+        composeTestRule.onAllNodesWithText(statWorkouts).onFirst().assertIsDisplayed()
+        composeTestRule.onNodeWithText(statSets).assertIsDisplayed()
+        composeTestRule.onNodeWithText(statTime).assertIsDisplayed()
 
         // 16. Recreate Activity and verify History persists across restart/recreation
         composeTestRule.activityRule.scenario.recreate()
@@ -166,14 +199,14 @@ class M3CriticalFlowTest {
         if (historyNavNodes.isNotEmpty()) {
             composeTestRule.onAllNodesWithText(navHistory).onLast().performClick()
         }
-        composeTestRule.waitUntil(timeoutMillis = 20_000) {
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
             composeTestRule.onAllNodesWithText(uniqueWorkoutName).fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
 
         // 17. Delete workout template and verify completed history session and sets survive
         composeTestRule.onAllNodesWithText(navWorkouts).onLast().performClick()
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
             composeTestRule.onAllNodesWithText(titleWorkouts).fetchSemanticsNodes().isNotEmpty()
         }
 
@@ -193,21 +226,21 @@ class M3CriticalFlowTest {
         composeTestRule.onNodeWithText(actionDelete).performClick()
 
         // Wait until template is removed from Workouts list
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
             composeTestRule.onAllNodesWithText(uniqueWorkoutName).fetchSemanticsNodes().isEmpty()
         }
         composeTestRule.onNodeWithText(uniqueWorkoutName).assertDoesNotExist()
 
         // 18. Verify finished session and detail still readable in History
         composeTestRule.onAllNodesWithText(navHistory).onLast().performClick()
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
             composeTestRule.onAllNodesWithText(uniqueWorkoutName).fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
 
         // Open history detail and assert preserved snapshots and set logs
         composeTestRule.onNodeWithText(uniqueWorkoutName).performClick()
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
             composeTestRule.onAllNodesWithText(titleHistoryDetail).fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
@@ -216,5 +249,109 @@ class M3CriticalFlowTest {
 
         // Clean up: navigate back
         composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
+    }
+
+    @Test
+    fun favoriteState_synchronizesBetweenListAndDetail_andSurvivesRecreation() {
+        waitUntilReady()
+
+        val titleExercises = context.getString(R.string.title_exercises)
+        val cdFavorite = context.getString(R.string.cd_favorite_exercise)
+        val cdUnfavorite = context.getString(R.string.cd_unfavorite_exercise)
+        val cdNavigateUp = context.getString(R.string.cd_navigate_up)
+        val targetExercise = "3/4 sit-up"
+
+        // 1. Ensure on Exercise list and exercise is visible
+        composeTestRule.onAllNodesWithText(titleExercises).onFirst().assertIsDisplayed()
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithText(targetExercise).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(targetExercise).assertIsDisplayed()
+
+        // 2. Open Exercise Detail
+        composeTestRule.onNodeWithText(targetExercise).performClick()
+        composeTestRule.waitForIdle()
+
+        // Reset if initially favorited
+        val isFavoritedInitially = composeTestRule.onAllNodesWithContentDescription(cdUnfavorite).fetchSemanticsNodes().isNotEmpty()
+        if (isFavoritedInitially) {
+            composeTestRule.onNodeWithContentDescription(cdUnfavorite).performClick()
+            composeTestRule.waitForIdle()
+        }
+
+        // 3. Toggle favorite ON in Detail
+        composeTestRule.onNodeWithContentDescription(cdFavorite).performClick()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithContentDescription(cdUnfavorite).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithContentDescription(cdUnfavorite).assertIsDisplayed()
+
+        // 4. Navigate back to List and verify synchronized (it shows unfavorite icon/action)
+        composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithContentDescription(cdUnfavorite).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onAllNodesWithContentDescription(cdUnfavorite).onFirst().assertIsDisplayed()
+
+        // 5. Recreate activity and verify favorite state survives relaunch
+        composeTestRule.activityRule.scenario.recreate()
+        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithContentDescription(cdUnfavorite).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onAllNodesWithContentDescription(cdUnfavorite).onFirst().assertIsDisplayed()
+
+        // 6. Open detail again and verify favorite state is preserved
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(targetExercise).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(targetExercise).performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithContentDescription(cdUnfavorite).assertIsDisplayed()
+
+        // Clean up: toggle off
+        composeTestRule.onNodeWithContentDescription(cdUnfavorite).performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
+    }
+
+    @Test
+    fun themeSelection_survivesActivityRecreation() {
+        waitUntilReady()
+
+        val navSettings = context.getString(R.string.nav_settings)
+        val titleSettings = context.getString(R.string.title_settings)
+        val themeDark = context.getString(R.string.theme_dark)
+        val themeSystem = context.getString(R.string.theme_system)
+        val navExercises = context.getString(R.string.nav_exercises)
+
+        // 1. Navigate to Settings
+        composeTestRule.onAllNodesWithText(navSettings).onLast().performClick()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(titleSettings).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        // 2. Select Dark theme
+        composeTestRule.onNodeWithText(themeDark).performClick()
+        composeTestRule.waitForIdle()
+
+        // 3. Recreate activity
+        composeTestRule.activityRule.scenario.recreate()
+        composeTestRule.waitForIdle()
+
+        // 4. Verify Dark theme is retained
+        composeTestRule.onAllNodesWithText(navSettings).onLast().performClick()
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithText(titleSettings).fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText(themeDark).assertIsDisplayed()
+
+        // 5. Clean up: reset to System
+        composeTestRule.onNodeWithText(themeSystem).performClick()
+        composeTestRule.waitForIdle()
+
+        // Return to exercises
+        composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
     }
 }
