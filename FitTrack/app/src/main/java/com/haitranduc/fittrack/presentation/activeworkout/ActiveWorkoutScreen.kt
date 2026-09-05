@@ -36,10 +36,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -214,7 +216,12 @@ fun ActiveWorkoutContent(
                 if (uiState.restTimerRemainingSeconds > 0L) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("active_rest_timer")
+                            .semantics {
+                                stateDescription = uiState.restTimerRemainingSeconds.toString()
+                            },
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer
                         ),
@@ -392,6 +399,7 @@ fun ActiveWorkoutContent(
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(end = 4.dp)
+                                            .testTag("active_weight_${exercise.id}")
                                             .semantics {
                                                 contentDescription = currentWeight.ifEmpty { "Weight" }
                                             }
@@ -404,6 +412,7 @@ fun ActiveWorkoutContent(
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(end = 4.dp)
+                                            .testTag("active_reps_${exercise.id}")
                                             .semantics {
                                                 contentDescription = currentReps.ifEmpty { "Reps" }
                                             }

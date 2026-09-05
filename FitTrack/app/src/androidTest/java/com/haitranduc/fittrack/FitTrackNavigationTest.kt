@@ -6,6 +6,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isNotSelected
@@ -13,10 +14,12 @@ import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -963,6 +966,9 @@ class FitTrackNavigationTest {
         val btnFinishWorkout = context.getString(R.string.btn_finish_workout)
         val cdNavigateUp = context.getString(R.string.cd_navigate_up)
         val uniqueWorkoutName = "ActiveRecreate_" + System.currentTimeMillis()
+        val weightFieldTag = "active_weight_0001"
+        val repsFieldTag = "active_reps_0001"
+        val restTimerTag = "active_rest_timer"
 
         try {
             // 1. Create and start workout
@@ -985,29 +991,40 @@ class FitTrackNavigationTest {
                 composeTestRule.onAllNodesWithContentDescription(cdSetDone).fetchSemanticsNodes().isNotEmpty()
             }
 
-            // 3. Enter reps and weight inputs
-            val textFields = composeTestRule.onAllNodes(hasSetTextAction())
-            if (textFields.fetchSemanticsNodes().size >= 2) {
-                textFields[0].performTextReplacement("12")
-                textFields[1].performTextReplacement("75")
-            }
-
-            // 4. Complete set (triggers rest timer)
-            composeTestRule.onNodeWithContentDescription(cdSetDone).performScrollTo().performClick()
-            composeTestRule.waitForIdle()
-
-            // 5. Recreate Activity without real-time delays
+            // 3. Enter a draft set, then recreate before completing it.
+            composeTestRule.onNodeWithTag(weightFieldTag).performTextReplacement("75")
+            composeTestRule.onNodeWithTag(repsFieldTag).performTextReplacement("12")
             composeTestRule.activityRule.scenario.recreate()
-            composeTestRule.waitForIdle()
-
-            // 6. Verify active workout state and inputs are restored
             composeTestRule.waitUntil(timeoutMillis = 15_000) {
-                composeTestRule.onAllNodesWithText(titleActiveWorkout).fetchSemanticsNodes().isNotEmpty()
+                composeTestRule.onAllNodesWithTag(weightFieldTag).fetchSemanticsNodes().isNotEmpty() &&
+                    composeTestRule.onAllNodesWithTag(repsFieldTag).fetchSemanticsNodes().isNotEmpty()
             }
-            composeTestRule.onNodeWithText(titleActiveWorkout).assertIsDisplayed()
-            composeTestRule.onNodeWithText("3/4 sit-up").assertIsDisplayed()
+            composeTestRule.onNodeWithTag(weightFieldTag).assertTextEquals("75")
+            composeTestRule.onNodeWithTag(repsFieldTag).assertTextEquals("12")
 
-            // 7. Finish workout to close session
+            // 4. Complete the restored draft set and capture the active rest timer.
+            composeTestRule.onNodeWithContentDescription(cdSetDone).performScrollTo().performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithTag(restTimerTag).fetchSemanticsNodes().isNotEmpty()
+            }
+            val remainingBeforeRecreation = composeTestRule.onNodeWithTag(restTimerTag)
+                .fetchSemanticsNode().config[SemanticsProperties.StateDescription].toLong()
+            assertTrue(remainingBeforeRecreation in 1L..90L)
+
+            // 5. Recreate again and verify both persisted inputs and timer progress.
+            composeTestRule.activityRule.scenario.recreate()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithTag(weightFieldTag).fetchSemanticsNodes().isNotEmpty() &&
+                    composeTestRule.onAllNodesWithTag(repsFieldTag).fetchSemanticsNodes().isNotEmpty() &&
+                    composeTestRule.onAllNodesWithTag(restTimerTag).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithTag(weightFieldTag).assertTextEquals("75")
+            composeTestRule.onNodeWithTag(repsFieldTag).assertTextEquals("12")
+            val remainingAfterRecreation = composeTestRule.onNodeWithTag(restTimerTag)
+                .fetchSemanticsNode().config[SemanticsProperties.StateDescription].toLong()
+            assertTrue(remainingAfterRecreation in 1L..remainingBeforeRecreation)
+
+            // 6. Finish workout to close session.
             composeTestRule.onNodeWithText(btnFinishWorkout).performClick()
             composeTestRule.waitUntil(timeoutMillis = 15_000) {
                 composeTestRule.onAllNodesWithText(context.getString(R.string.title_history_detail)).fetchSemanticsNodes().isNotEmpty()
@@ -1025,8 +1042,10 @@ class FitTrackNavigationTest {
                 }
             } catch (_: Exception) {}
             val navExercises = context.getString(R.string.nav_exercises)
-            composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
-            composeTestRule.waitForIdle()
+            if (composeTestRule.onAllNodesWithText(navExercises).fetchSemanticsNodes().isNotEmpty()) {
+                composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
+                composeTestRule.waitForIdle()
+            }
         }
     }
 
