@@ -44,13 +44,8 @@ class FitTrackNavigationTest {
     private val context: Context
         get() = ApplicationProvider.getApplicationContext()
 
-    private val testDb: FitTrackDatabase by lazy {
-        Room.databaseBuilder(
-            context,
-            FitTrackDatabase::class.java,
-            "fittrack.db"
-        ).build()
-    }
+    private val testDb: FitTrackDatabase
+        get() = getTestDatabase(context)
 
     @Before
     fun setUp() {
@@ -74,6 +69,18 @@ class FitTrackNavigationTest {
 
     private fun waitUntilReady() {
         val titleExercises = context.getString(R.string.title_exercises)
+        val targetExercise = "3/4 sit-up"
+
+        // Ensure title is present (waits for initial launch & seed)
+        composeTestRule.waitUntil(timeoutMillis = 30_000) {
+            composeTestRule.onAllNodesWithText(titleExercises).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        // Fast path: if root exercise item is already visible, the screen is clean and ready
+        if (composeTestRule.onAllNodesWithText(targetExercise).fetchSemanticsNodes().isNotEmpty()) {
+            return
+        }
+
         val navExercises = context.getString(R.string.nav_exercises)
         val cdNavigateUp = context.getString(R.string.cd_navigate_up)
         val filterAll = context.getString(R.string.filter_all)
@@ -94,10 +101,9 @@ class FitTrackNavigationTest {
             if (navNodes.isNotEmpty()) {
                 composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
             }
-        }
-
-        composeTestRule.waitUntil(timeoutMillis = 20_000) {
-            composeTestRule.onAllNodesWithText(titleExercises).fetchSemanticsNodes().isNotEmpty()
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText(titleExercises).fetchSemanticsNodes().isNotEmpty()
+            }
         }
 
         // Clear search input if present and not already empty
@@ -128,9 +134,9 @@ class FitTrackNavigationTest {
             }
         }
 
-        // Wait until database seed is loaded and initial exercise item is displayed
-        composeTestRule.waitUntil(timeoutMillis = 20_000) {
-            composeTestRule.onAllNodesWithText("3/4 sit-up").fetchSemanticsNodes().isNotEmpty()
+        // Wait until initial exercise item is displayed
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText(targetExercise).fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.waitForIdle()
     }
@@ -510,13 +516,7 @@ class FitTrackNavigationTest {
         val btnFinishWorkout = context.getString(R.string.btn_finish_workout)
         val titleHistoryDetail = context.getString(R.string.title_history_detail)
 
-        // 1. Navigate to Workouts tab
-        composeTestRule.onAllNodesWithText(navWorkouts).onLast().performClick()
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
-            composeTestRule.onAllNodesWithText(titleWorkouts).fetchSemanticsNodes().isNotEmpty()
-        }
-
-        // 2. Create a workout template
+        // 1. Create a workout template
         val uniqueWorkoutName = "Resume Test " + System.currentTimeMillis()
 
         try {

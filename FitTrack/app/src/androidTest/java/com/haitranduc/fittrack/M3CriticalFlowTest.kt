@@ -39,13 +39,8 @@ class M3CriticalFlowTest {
     private val context: Context
         get() = ApplicationProvider.getApplicationContext()
 
-    private val testDb: FitTrackDatabase by lazy {
-        Room.databaseBuilder(
-            context,
-            FitTrackDatabase::class.java,
-            "fittrack.db"
-        ).build()
-    }
+    private val testDb: FitTrackDatabase
+        get() = getTestDatabase(context)
 
     @Before
     fun setUp() {
@@ -69,6 +64,18 @@ class M3CriticalFlowTest {
 
     private fun waitUntilReady() {
         val titleExercises = context.getString(R.string.title_exercises)
+        val targetExercise = "3/4 sit-up"
+
+        // Wait for database exercise seed to be ready and Exercises title to appear
+        composeTestRule.waitUntil(timeoutMillis = 30_000) {
+            composeTestRule.onAllNodesWithText(titleExercises).fetchSemanticsNodes().isNotEmpty()
+        }
+
+        // Fast path: if root exercise is already displayed, no navigation needed
+        if (composeTestRule.onAllNodesWithText(targetExercise).fetchSemanticsNodes().isNotEmpty()) {
+            return
+        }
+
         val navExercises = context.getString(R.string.nav_exercises)
         val cdNavigateUp = context.getString(R.string.cd_navigate_up)
 
@@ -79,16 +86,20 @@ class M3CriticalFlowTest {
             composeTestRule.waitForIdle()
         }
 
-        // If bottom bar is visible, navigate to Exercises tab
-        val navNodes = composeTestRule.onAllNodesWithText(navExercises).fetchSemanticsNodes()
-        if (navNodes.isNotEmpty()) {
-            composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
-            composeTestRule.waitForIdle()
+        // If not on Exercises tab, navigate to Exercises tab
+        val titleNodes = composeTestRule.onAllNodesWithText(titleExercises).fetchSemanticsNodes()
+        if (titleNodes.isEmpty()) {
+            val navNodes = composeTestRule.onAllNodesWithText(navExercises).fetchSemanticsNodes()
+            if (navNodes.isNotEmpty()) {
+                composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
+            }
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText(titleExercises).fetchSemanticsNodes().isNotEmpty()
+            }
         }
 
-        // Wait for database exercise seed to be ready and Exercises title to appear
-        composeTestRule.waitUntil(timeoutMillis = 30_000) {
-            composeTestRule.onAllNodesWithText(titleExercises).fetchSemanticsNodes().isNotEmpty()
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText(targetExercise).fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.waitForIdle()
     }
@@ -199,7 +210,6 @@ class M3CriticalFlowTest {
 
             // M4: Skip hides/stops the rest timer without waiting 90 real seconds
             composeTestRule.onNodeWithText(btnSkipRest).performClick()
-            composeTestRule.waitForIdle()
             composeTestRule.onNodeWithText(labelRestTimer).assertDoesNotExist()
 
             // 12. Finish Workout
