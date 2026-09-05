@@ -4,6 +4,7 @@ object FitTrackDestination {
     const val EXERCISES = "exercises"
     const val WORKOUTS = "workouts"
     const val HISTORY = "history"
+    const val SETTINGS = "settings"
     const val EXERCISE_DETAIL = "exercise_detail/{exerciseId}"
     const val WORKOUT_EDITOR = "workout_editor"
     const val WORKOUT_EDITOR_WITH_ID = "workout_editor/{workoutId}"

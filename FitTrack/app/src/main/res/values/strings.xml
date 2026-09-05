@@ -52,6 +52,10 @@
     <string name="filter_bodyweight">Bodyweight</string>
     <string name="filter_dumbbell">Dumbbell</string>
     <string name="filter_cable">Cable</string>
+    <string name="filter_favorites">Favorites</string>
+    <string name="cd_favorite_exercise">Add exercise to favorites</string>
+    <string name="cd_unfavorite_exercise">Remove exercise from favorites</string>
+    <string name="cd_dismiss_error">Dismiss error</string>
     <string name="label_body_part_filter">Body Part</string>
     <string name="label_equipment_filter">Equipment</string>
     <string name="empty_exercises">No exercises found matching your search.</string>
@@ -172,6 +176,10 @@
     <string name="label_done_header">Done</string>
     <string name="btn_add_set">Add Set</string>
     <string name="btn_finish_workout">Finish Workout</string>
+    <string name="label_rest_timer">Rest</string>
+    <string name="btn_skip_rest">Skip</string>
+    <string name="cd_skip_rest">Skip rest timer</string>
+    <string name="rest_timer_format">%1$02d:%2$02d</string>
 
     <!-- M1 History & Detail -->
     <string name="title_history">Workout History</string>
@@ -184,6 +192,22 @@
     <string name="history_date_3days">3 days ago</string>
     <string name="history_duration_48m">48 mins</string>
     <string name="history_duration_42m">42 mins</string>
+
+    <!-- M4 Lifetime Statistics -->
+    <string name="stat_workouts">Workouts</string>
+    <string name="stat_sets">Sets</string>
+    <string name="stat_time">Time</string>
+    <string name="stat_placeholder">-</string>
+    <string name="stat_time_hours_minutes">%1$dh %2$dm</string>
+    <string name="stat_time_minutes">%1$dm</string>
+
+    <!-- M4 Settings & Theme -->
+    <string name="title_settings">Settings</string>
+    <string name="nav_settings">Settings</string>
+    <string name="section_theme">Appearance</string>
+    <string name="theme_system">System default</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
 
     <!-- Error Messages -->
     <string name="error_database">A database error occurred. Please try again.</string>

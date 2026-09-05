@@ -7,5 +7,8 @@ data class ExerciseDetailUiState(
     val isLoading: Boolean = false,
     val exercise: Exercise? = null,
     val isMissing: Boolean = false,
-    val errorMessage: UiText? = null
+    val errorMessage: UiText? = null,
+    val isFavorite: Boolean? = false,
+    val isTogglingFavorite: Boolean = false,
+    val favoriteErrorMessage: UiText? = null
 )

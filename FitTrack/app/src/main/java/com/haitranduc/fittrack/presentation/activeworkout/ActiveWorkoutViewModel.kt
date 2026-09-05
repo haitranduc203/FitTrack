@@ -26,13 +26,18 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ActiveWorkoutViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle,
     private val workoutHistoryRepository: WorkoutHistoryRepository,
     private val workoutRepository: WorkoutRepository,
     private val completeSetUseCase: CompleteSetUseCase,
     private val finishWorkoutUseCase: FinishWorkoutUseCase,
     private val timeProvider: TimeProvider
 ) : ViewModel() {
+
+    companion object {
+        const val REST_DURATION_SECONDS = 90L
+        const val REST_TIMER_ENDS_AT_KEY = "rest_timer_ends_at_millis"
+    }
 
     private val parsedSessionId: Long? = run {
         val raw = savedStateHandle.get<Any>("sessionId")
@@ -48,6 +53,11 @@ class ActiveWorkoutViewModel @Inject constructor(
     val uiState: StateFlow<ActiveWorkoutUiState> = _uiState.asStateFlow()
 
     init {
+        val savedRestEndsAt = savedStateHandle.get<Long>(REST_TIMER_ENDS_AT_KEY)
+        if (savedRestEndsAt != null) {
+            updateRestTimer(timeProvider.currentTimeMillis(), savedRestEndsAt)
+        }
+
         val sid = parsedSessionId
         if (sid == null || sid <= 0L) {
             _uiState.update { it.copy(isLoading = false, isMissing = true) }
@@ -101,10 +111,44 @@ class ActiveWorkoutViewModel @Inject constructor(
     }
 
     fun onTimerTick() {
+        val now = timeProvider.currentTimeMillis()
         val session = _uiState.value.session
         if (session != null && session.finishedAt == null) {
-            val elapsed = maxOf(0L, (timeProvider.currentTimeMillis() - session.startedAt) / 1000L)
+            val elapsed = maxOf(0L, (now - session.startedAt) / 1000L)
             _uiState.update { it.copy(elapsedTimeSeconds = elapsed) }
+        }
+        val endsAt = savedStateHandle.get<Long>(REST_TIMER_ENDS_AT_KEY)
+        if (endsAt != null) {
+            updateRestTimer(now, endsAt)
+        }
+    }
+
+    fun onSkipRestTimer() {
+        savedStateHandle[REST_TIMER_ENDS_AT_KEY] = null
+        _uiState.update {
+            it.copy(
+                restTimerEndsAtMillis = null,
+                restTimerRemainingSeconds = 0L
+            )
+        }
+    }
+
+    private fun startRestTimer(now: Long = timeProvider.currentTimeMillis()) {
+        val endsAt = now + REST_DURATION_SECONDS * 1000L
+        savedStateHandle[REST_TIMER_ENDS_AT_KEY] = endsAt
+        updateRestTimer(now, endsAt)
+    }
+
+    private fun updateRestTimer(now: Long, endsAt: Long?) {
+        val remaining = endsAt?.let { maxOf(0L, (it - now + 999L) / 1000L) } ?: 0L
+        if (remaining == 0L) {
+            savedStateHandle[REST_TIMER_ENDS_AT_KEY] = null
+        }
+        _uiState.update {
+            it.copy(
+                restTimerEndsAtMillis = endsAt?.takeIf { remaining > 0L },
+                restTimerRemainingSeconds = remaining
+            )
         }
     }
 
@@ -151,6 +195,7 @@ class ActiveWorkoutViewModel @Inject constructor(
         viewModelScope.launch {
             when (val res = completeSetUseCase(sid, exercise.id, exercise.name, nextSetNumber, reps, weight)) {
                 is CompleteSetResult.Success -> {
+                    startRestTimer()
                     _uiState.update {
                         it.copy(
                             isCompletingSet = false,

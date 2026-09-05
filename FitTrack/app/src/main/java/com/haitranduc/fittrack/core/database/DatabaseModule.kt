@@ -3,6 +3,7 @@ package com.haitranduc.fittrack.core.database
 import android.content.Context
 import androidx.room.Room
 import com.haitranduc.fittrack.data.local.dao.ExerciseDao
+import com.haitranduc.fittrack.data.local.dao.FavoriteExerciseDao
 import com.haitranduc.fittrack.data.local.dao.SetLogDao
 import com.haitranduc.fittrack.data.local.dao.WorkoutDao
 import com.haitranduc.fittrack.data.local.dao.WorkoutSessionDao
@@ -27,7 +28,15 @@ object DatabaseModule {
             context,
             FitTrackDatabase::class.java,
             "fittrack.db"
-        ).build()
+        )
+            .addMigrations(MIGRATION_1_2)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideFavoriteExerciseDao(database: FitTrackDatabase): FavoriteExerciseDao {
+        return database.favoriteExerciseDao()
     }
 
     @Provides
@@ -52,6 +61,12 @@ object DatabaseModule {
     @Singleton
     fun provideSetLogDao(database: FitTrackDatabase): SetLogDao {
         return database.setLogDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideStatisticsDao(database: FitTrackDatabase): com.haitranduc.fittrack.data.local.dao.StatisticsDao {
+        return database.statisticsDao()
     }
 
     @Provides

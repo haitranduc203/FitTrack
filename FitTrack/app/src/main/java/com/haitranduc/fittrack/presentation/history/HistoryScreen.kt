@@ -89,6 +89,40 @@ fun HistoryContent(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Statistics Summary Card (3 slots: Workouts, Sets, Time)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    StatisticItem(
+                        label = stringResource(R.string.stat_workouts),
+                        value = uiState.totalWorkouts.toString()
+                    )
+                    StatisticItem(
+                        label = stringResource(R.string.stat_sets),
+                        value = uiState.totalCompletedSets.toString()
+                    )
+                    StatisticItem(
+                        label = stringResource(R.string.stat_time),
+                        value = formatTrainingTime(uiState.totalTrainingTimeSeconds)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             when {
                 uiState.isLoading -> {
                     Box(
@@ -236,6 +270,43 @@ private fun formatDate(timestamp: Long): String {
     return formatter.format(Date(timestamp))
 }
 
+fun formatTrainingTime(durationSeconds: Long?): String {
+    if (durationSeconds == null || durationSeconds <= 0L) return "0m"
+    val totalMinutes = durationSeconds / 60
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return if (hours > 0) {
+        "${hours}h ${minutes}m"
+    } else {
+        "${totalMinutes}m"
+    }
+}
+
+@Composable
+private fun StatisticItem(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(2.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
 @Preview(showBackground = true, name = "History Screen - Populated")
 @Composable
 private fun HistoryContentPopulatedPreview() {
@@ -243,6 +314,9 @@ private fun HistoryContentPopulatedPreview() {
         HistoryContent(
             uiState = HistoryUiState(
                 isLoading = false,
+                totalWorkouts = 2L,
+                totalCompletedSets = 12L,
+                totalTrainingTimeSeconds = 5500L,
                 sessions = listOf(
                     WorkoutSession(
                         id = 1L,
@@ -275,7 +349,13 @@ private fun HistoryContentPopulatedPreview() {
 private fun HistoryContentEmptyPreview() {
     FitTrackTheme {
         HistoryContent(
-            uiState = HistoryUiState(isLoading = false, sessions = emptyList()),
+            uiState = HistoryUiState(
+                isLoading = false,
+                totalWorkouts = 0L,
+                totalCompletedSets = 0L,
+                totalTrainingTimeSeconds = 0L,
+                sessions = emptyList()
+            ),
             onSessionClick = {},
             onRetry = {}
         )

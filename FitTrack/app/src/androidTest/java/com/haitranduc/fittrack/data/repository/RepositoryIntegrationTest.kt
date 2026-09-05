@@ -53,6 +53,41 @@ class RepositoryIntegrationTest {
     private lateinit var workoutRepository: WorkoutRepository
     private lateinit var historyRepository: WorkoutHistoryRepository
 
+    private val sampleSeedJson = """
+        [
+          {
+            "id": "ex_01",
+            "name": "Barbell Bench Press",
+            "bodyPart": "Chest",
+            "equipment": "Barbell",
+            "target": "Pecs",
+            "muscleGroup": "Chest",
+            "secondaryMuscles": ["Triceps"],
+            "instructions": ["Step 1", "Step 2"]
+          },
+          {
+            "id": "ex_02",
+            "name": "Incline Dumbbell Press",
+            "bodyPart": "Chest",
+            "equipment": "Dumbbell",
+            "target": "Pecs",
+            "muscleGroup": "Chest",
+            "secondaryMuscles": ["Triceps"],
+            "instructions": ["Step 1"]
+          },
+          {
+            "id": "ex_03",
+            "name": "Barbell Squat",
+            "bodyPart": "Upper Legs",
+            "equipment": "Barbell",
+            "target": "Quads",
+            "muscleGroup": "Legs",
+            "secondaryMuscles": ["Glutes"],
+            "instructions": ["Step 1"]
+          }
+        ]
+    """.trimIndent()
+
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
@@ -63,7 +98,7 @@ class RepositoryIntegrationTest {
         val seedImporter = ExerciseSeedImporter(
             database = database,
             exerciseDao = database.exerciseDao(),
-            assetReader = AndroidAssetSeedReader(context)
+            assetReader = { sampleSeedJson }
         )
 
         exerciseRepository = ExerciseRepositoryImpl(
@@ -92,14 +127,24 @@ class RepositoryIntegrationTest {
 
     @Test
     fun exerciseRepository_seedSuccess_andSuccessList() = runTest {
-        val seedResult = exerciseRepository.ensureSeeded()
+        val realImporter = ExerciseSeedImporter(
+            database = database,
+            exerciseDao = database.exerciseDao(),
+            assetReader = AndroidAssetSeedReader(context)
+        )
+        val realRepo = ExerciseRepositoryImpl(
+            exerciseDao = database.exerciseDao(),
+            seedImporter = realImporter
+        )
+        val seedResult = realRepo.ensureSeeded()
         assertTrue(seedResult is SeedImportResult.Imported)
 
-        val listResult = exerciseRepository.observeExercises().first()
+        val listResult = realRepo.observeExercises().first()
         assertTrue(listResult is DataResult.Success)
         val list = (listResult as DataResult.Success).data
         assertEquals(1324, list.size)
     }
+
 
     @Test
     fun exerciseRepository_emptyResult() = runTest {
@@ -166,8 +211,9 @@ class RepositoryIntegrationTest {
 
         val repo = ExerciseRepositoryImpl(
             exerciseDao = failingDao,
-            seedImporter = ExerciseSeedImporter(database, failingDao, AndroidAssetSeedReader(context))
+            seedImporter = ExerciseSeedImporter(database, failingDao, { sampleSeedJson })
         )
+
 
         val result = repo.observeExercises().first()
         assertTrue(result is DataResult.Failure)
@@ -392,7 +438,7 @@ class RepositoryIntegrationTest {
 
         val repo = ExerciseRepositoryImpl(
             exerciseDao = cancellingDao,
-            seedImporter = ExerciseSeedImporter(database, cancellingDao, AndroidAssetSeedReader(context))
+            seedImporter = ExerciseSeedImporter(database, cancellingDao, { sampleSeedJson })
         )
 
         var caughtCancellation = false
@@ -418,11 +464,12 @@ class RepositoryIntegrationTest {
 
         val repo = ExerciseRepositoryImpl(
             exerciseDao = failingDao,
-            seedImporter = ExerciseSeedImporter(database, failingDao, AndroidAssetSeedReader(context))
+            seedImporter = ExerciseSeedImporter(database, failingDao, { sampleSeedJson })
         )
 
         repo.observeExercises().first()
     }
+
 
     @Test(expected = LinkageError::class)
     fun workoutRepository_fatalError_isRethrown_notMappedToFailure() = runTest {
@@ -523,5 +570,44 @@ class RepositoryIntegrationTest {
         assertNotNull(fetched)
         assertEquals(sessionId, fetched?.id)
         assertEquals("Leg Day", fetched?.workoutNameSnapshot)
+    }
+
+    @Test
+    fun favoriteExerciseRepository_setAndObserveFavorites_persistsAcrossCloseAndReopen() = runTest {
+        context.deleteDatabase("favorite_repo_test.db")
+        var fileDb = Room.databaseBuilder(context, FitTrackDatabase::class.java, "favorite_repo_test.db")
+            .allowMainThreadQueries()
+            .build()
+        fileDb.exerciseDao().insertAll(listOf(
+            ExerciseEntity("e1", "Bench Press", "chest", "barbell", "pectorals", "chest", emptyList(), emptyList(), null, null)
+        ))
+        val timeProvider = com.haitranduc.fittrack.core.time.SystemTimeProvider()
+        var repo: com.haitranduc.fittrack.domain.repository.FavoriteExerciseRepository =
+            FavoriteExerciseRepositoryImpl(fileDb.favoriteExerciseDao(), timeProvider)
+
+        val initial = repo.observeFavoriteIds().first()
+        assertTrue((initial as DataResult.Success).data.isEmpty())
+
+        val setResult = repo.setFavorite("e1", true)
+        assertTrue(setResult is DataResult.Success)
+
+        val updated = repo.observeFavoriteIds().first()
+        assertEquals(setOf("e1"), (updated as DataResult.Success).data)
+
+        fileDb.close()
+        fileDb = Room.databaseBuilder(context, FitTrackDatabase::class.java, "favorite_repo_test.db")
+            .allowMainThreadQueries()
+            .build()
+        repo = FavoriteExerciseRepositoryImpl(fileDb.favoriteExerciseDao(), timeProvider)
+
+        val reopened = repo.observeFavoriteIds().first()
+        assertEquals(setOf("e1"), (reopened as DataResult.Success).data)
+
+        repo.setFavorite("e1", false)
+        val afterUnfavorite = repo.observeFavoriteIds().first()
+        assertTrue((afterUnfavorite as DataResult.Success).data.isEmpty())
+
+        fileDb.close()
+        context.deleteDatabase("favorite_repo_test.db")
     }
 }
