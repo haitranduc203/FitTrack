@@ -289,4 +289,29 @@ class ExerciseDetailViewModelTest {
 
         collectJob.cancel()
     }
+
+    @Test
+    fun retryFailure_retainsPreviouslyLoadedExercise() = runTest(testDispatcher) {
+        val viewModel = createViewModel("ex_bench")
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        assertNotNull(viewModel.uiState.value.exercise)
+        assertEquals("Barbell Bench Press", viewModel.uiState.value.exercise?.name)
+
+        // Background refresh fails
+        repository.returnDataFailure = true
+        viewModel.retry()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
+        assertNotNull(state.exercise)
+        assertEquals("Barbell Bench Press", state.exercise?.name)
+
+        collectJob.cancel()
+    }
 }

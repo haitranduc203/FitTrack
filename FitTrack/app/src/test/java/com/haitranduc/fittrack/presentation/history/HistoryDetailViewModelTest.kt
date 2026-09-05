@@ -152,4 +152,27 @@ class HistoryDetailViewModelTest {
         assertNull(state.errorMessage)
         assertEquals("Push Day", state.session?.workoutNameSnapshot)
     }
+
+    @Test
+    fun retryFailure_retainsPreviouslyLoadedSession() = runTest {
+        historyRepository.sessions.add(sampleSession)
+        historyRepository.refreshFlow()
+
+        val vm = createViewModel(sessionId = 10L)
+        advanceUntilIdle()
+
+        assertNotNull(vm.uiState.value.session)
+        assertEquals("Push Day", vm.uiState.value.session?.workoutNameSnapshot)
+
+        // Background refresh fails
+        historyRepository.observeSessionError = DataError.Database(RuntimeException("Network failure"))
+        vm.onRetry()
+        advanceUntilIdle()
+
+        val state = vm.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
+        assertNotNull(state.session)
+        assertEquals("Push Day", state.session?.workoutNameSnapshot)
+    }
 }

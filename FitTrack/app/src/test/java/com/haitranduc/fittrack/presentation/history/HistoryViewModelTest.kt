@@ -235,4 +235,27 @@ class HistoryViewModelTest {
         assertNull(state.errorMessage)
         assertEquals(1, state.sessions.size)
     }
+
+    @Test
+    fun observeHistory_refreshFailure_retainsPreviouslyLoadedSessions() = runTest {
+        historyRepository.sessions.add(sampleSession1)
+        historyRepository.refreshFlow()
+
+        val viewModel = HistoryViewModel(historyRepository, statisticsRepository)
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.sessions.size)
+        assertEquals("Push Day", viewModel.uiState.value.sessions[0].workoutNameSnapshot)
+
+        // Simulate refresh failure
+        historyRepository.observeHistoryError = DataError.Database(RuntimeException("Network failure"))
+        viewModel.onRetry()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
+        assertEquals(1, state.sessions.size)
+        assertEquals("Push Day", state.sessions[0].workoutNameSnapshot)
+    }
 }
