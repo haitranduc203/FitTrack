@@ -17,7 +17,7 @@ This matrix maps the M6 backlog and `FitTrack_Project_Plan/09_TEST_PLAN.md` to e
 | `ActiveWorkoutViewModel` | `ActiveWorkoutViewModelTest`: load/missing, elapsed time, input, invalid/success/failure complete-set, finish outcomes, duplicate finish, rest timer and saved-state restoration. | Covered |
 | `HistoryViewModel` | `HistoryViewModelTest`: empty/success/error/retry/retained content and all statistics; `FitTrackNavigationTest.test_historyList_to_historyDetail_andBack` covers the open-detail UI boundary. | Covered |
 | Critical Compose flow | `M3CriticalFlowTest.criticalWorkoutFlow_create_start_completeSet_finish_persistsAcrossRecreate_survivesTemplateDeletion`. | Covered |
-| Regression checklist | Matrix below. | One M6 addition required |
+| Regression checklist | Matrix below, including the M6 Compose invalid-input test. | Covered |
 
 ## Regression checklist
 
@@ -30,12 +30,24 @@ This matrix maps the M6 backlog and `FitTrack_Project_Plan/09_TEST_PLAN.md` to e
 | Empty exercise search | `test_searchNonMatchingQuery_showsEmptyState` plus `ExerciseListViewModelTest.emptyResult_showsEmptyListWithoutError`. | Covered |
 | Empty workout list | `WorkoutListViewModelTest.emptyWorkouts_showsEmptyState` and empty-state Compose content coverage. | Covered |
 | Empty history | `HistoryViewModelTest.observeHistory_empty_showsEmptySessions` and empty-state Compose content coverage. | Covered |
-| Invalid reps | Validation/use-case/ViewModel tests exist; add real Compose input regression in M6 Task 2. | UNCOVERED UI boundary |
-| Invalid weight | Validation/use-case/ViewModel tests exist; add real Compose input regression in M6 Task 2. | UNCOVERED UI boundary |
+| Invalid reps | Validation/use-case/ViewModel tests plus `test_activeWorkout_invalidRepsAndWeight_showErrorsWithoutPersistingSet`. | Covered |
+| Invalid weight | Validation/use-case/ViewModel tests plus `test_activeWorkout_invalidRepsAndWeight_showErrorsWithoutPersistingSet`. | Covered |
 | Multiple active workout prevention | `StartWorkoutUseCaseTest` conflict/concurrency cases and `test_activeWorkout_backAndResume_resumesExistingSessionWithoutDuplicate`. | Covered |
 | Delete workout keeps history | `WorkoutHistoryDaoTest.deletingWorkoutTemplate_preservesCompletedHistoryAndSetsSnapshots` and the critical flow. | Covered |
 | App restart preserves data | File-backed Room reopen test and critical-flow activity recreation with history snapshots. | Covered |
 
 ## Final verification
 
-Final dataset, host, lint, APK, and two-run connected-suite results will be recorded after Task 2. The current suite baseline at M6 branch creation is 194 JVM tests and 91 connected tests.
+Verified on 2026-09-05:
+
+- Dataset tools: 12 tests, 0 failures (`1.173s`).
+- Clean host gate: exit 0 (`70.1s`).
+- JVM unit tests: 194 tests, 0 failures, 0 errors, 0 skipped.
+- Lint: 121 issues, 0 errors.
+- Debug APK: 14,246,160 bytes.
+- Release unsigned APK: 9,682,326 bytes.
+- Connected run 1: 92 tests, 0 failures, 0 errors, 0 skipped (`140.4s`).
+- Connected run 2: 92 tests, 0 failures, 0 errors, 0 skipped (`151.7s`).
+- `git diff --check`: clean.
+
+The connected suite increased from 91 to 92 tests. Both full runs completed below the 360-second limit. The SDK XML compatibility warning remains non-blocking.
