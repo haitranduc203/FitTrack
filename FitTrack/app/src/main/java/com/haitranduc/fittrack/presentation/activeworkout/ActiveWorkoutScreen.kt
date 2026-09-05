@@ -37,6 +37,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -92,8 +95,8 @@ fun ActiveWorkoutScreen(
 @Composable
 fun ActiveWorkoutContent(
     uiState: ActiveWorkoutUiState,
-    onRepsChanged: (String, String) -> Unit,
-    onWeightChanged: (String, String) -> Unit,
+    onRepsChanged: (exerciseId: String, reps: String) -> Unit,
+    onWeightChanged: (exerciseId: String, weight: String) -> Unit,
     onCompleteSetClicked: (Exercise) -> Unit,
     onFinishClicked: () -> Unit,
     onNavigateUp: () -> Unit,
@@ -108,7 +111,8 @@ fun ActiveWorkoutContent(
                     Text(
                         text = stringResource(R.string.title_active_workout),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.semantics { heading() }
                     )
                 },
                 navigationIcon = {
@@ -317,7 +321,7 @@ fun ActiveWorkoutContent(
                                         text = stringResource(R.string.label_done_header),
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.width(44.dp)
+                                        modifier = Modifier.width(48.dp)
                                     )
                                 }
 
@@ -352,7 +356,7 @@ fun ActiveWorkoutContent(
                                         FilledIconButton(
                                             onClick = {},
                                             enabled = false,
-                                            modifier = Modifier.width(44.dp),
+                                            modifier = Modifier.width(48.dp),
                                             colors = IconButtonDefaults.filledIconButtonColors(
                                                 disabledContainerColor = MaterialTheme.colorScheme.primary
                                             )
@@ -388,6 +392,9 @@ fun ActiveWorkoutContent(
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(end = 4.dp)
+                                            .semantics {
+                                                contentDescription = currentWeight.ifEmpty { "Weight" }
+                                            }
                                     )
                                     OutlinedTextField(
                                         value = currentReps,
@@ -397,11 +404,14 @@ fun ActiveWorkoutContent(
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(end = 4.dp)
+                                            .semantics {
+                                                contentDescription = currentReps.ifEmpty { "Reps" }
+                                            }
                                     )
                                     FilledIconButton(
                                         onClick = { onCompleteSetClicked(exercise) },
                                         enabled = !uiState.isCompletingSet,
-                                        modifier = Modifier.width(44.dp),
+                                        modifier = Modifier.width(48.dp),
                                         colors = IconButtonDefaults.filledIconButtonColors(
                                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
