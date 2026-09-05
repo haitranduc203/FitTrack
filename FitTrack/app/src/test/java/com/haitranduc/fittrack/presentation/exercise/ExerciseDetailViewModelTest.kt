@@ -10,6 +10,7 @@ import com.haitranduc.fittrack.testing.FakeFavoriteExerciseRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -181,6 +182,31 @@ class ExerciseDetailViewModelTest {
         collectJob.cancel()
     }
 
+    @Test
+    fun toggleFavorite_emitsSnackbarEvent() = runTest(testDispatcher) {
+        val viewModel = createViewModel("ex_bench")
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        var receivedEvent: ExerciseDetailEvent? = null
+        val eventJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            receivedEvent = viewModel.events.first()
+        }
+
+        viewModel.onToggleFavorite()
+        advanceUntilIdle()
+
+        assertEquals(
+            ExerciseDetailEvent.ShowSnackbar(UiText.StringResource(R.string.msg_favorite_added)),
+            receivedEvent
+        )
+
+        eventJob.cancel()
+        collectJob.cancel()
+    }
+
 
     @Test
     fun toggleFavorite_failure_surfacesErrorMessage() = runTest(testDispatcher) {
@@ -260,6 +286,31 @@ class ExerciseDetailViewModelTest {
         advanceUntilIdle()
 
         assertEquals(1, favoriteRepository.setFavoriteCallCount)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun retryFailure_retainsPreviouslyLoadedExercise() = runTest(testDispatcher) {
+        val viewModel = createViewModel("ex_bench")
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        assertNotNull(viewModel.uiState.value.exercise)
+        assertEquals("Barbell Bench Press", viewModel.uiState.value.exercise?.name)
+
+        // Background refresh fails
+        repository.returnDataFailure = true
+        viewModel.retry()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
+        assertNotNull(state.exercise)
+        assertEquals("Barbell Bench Press", state.exercise?.name)
 
         collectJob.cancel()
     }

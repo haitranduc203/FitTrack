@@ -9,7 +9,10 @@ import com.haitranduc.fittrack.testing.FakeWorkoutRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -17,7 +20,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -28,6 +30,8 @@ class WorkoutListViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var workoutRepository: FakeWorkoutRepository
+
+    private fun createViewModel(): WorkoutListViewModel = WorkoutListViewModel(workoutRepository)
 
     private val sampleWorkout1 = Workout(
         id = 1L,
@@ -70,7 +74,7 @@ class WorkoutListViewModelTest {
     @Test
     fun initialState_loadsWorkouts() = runTest {
         workoutRepository.setWorkouts(listOf(sampleWorkout1, sampleWorkout2))
-        val viewModel = WorkoutListViewModel(workoutRepository)
+        val viewModel = createViewModel()
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -84,7 +88,7 @@ class WorkoutListViewModelTest {
     @Test
     fun emptyWorkouts_showsEmptyState() = runTest {
         workoutRepository.setWorkouts(emptyList())
-        val viewModel = WorkoutListViewModel(workoutRepository)
+        val viewModel = createViewModel()
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
@@ -96,7 +100,7 @@ class WorkoutListViewModelTest {
     @Test
     fun observationFailure_showsError_andRetryRecovers() = runTest {
         workoutRepository.observeError = DataError.Database(RuntimeException("Database unreachable"))
-        val viewModel = WorkoutListViewModel(workoutRepository)
+        val viewModel = createViewModel()
         advanceUntilIdle()
 
         var state = viewModel.uiState.value
@@ -118,7 +122,7 @@ class WorkoutListViewModelTest {
     @Test
     fun deleteConfirmation_openAndDismiss() = runTest {
         workoutRepository.setWorkouts(listOf(sampleWorkout1))
-        val viewModel = WorkoutListViewModel(workoutRepository)
+        val viewModel = createViewModel()
         advanceUntilIdle()
 
         viewModel.onDeleteRequested(sampleWorkout1)
@@ -133,7 +137,7 @@ class WorkoutListViewModelTest {
     @Test
     fun deleteConfirmed_deletesFromRepository() = runTest {
         workoutRepository.setWorkouts(listOf(sampleWorkout1, sampleWorkout2))
-        val viewModel = WorkoutListViewModel(workoutRepository)
+        val viewModel = createViewModel()
         advanceUntilIdle()
 
         viewModel.onDeleteRequested(sampleWorkout1)
@@ -149,10 +153,29 @@ class WorkoutListViewModelTest {
     }
 
     @Test
+    fun deleteConfirmed_emitsSnackbarEvent() = runTest {
+        workoutRepository.setWorkouts(listOf(sampleWorkout1))
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        var receivedEvent: WorkoutListEvent? = null
+        val job = backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) {
+            receivedEvent = viewModel.events.first()
+        }
+
+        viewModel.onDeleteRequested(sampleWorkout1)
+        viewModel.onDeleteConfirmed()
+        advanceUntilIdle()
+
+        assertEquals(WorkoutListEvent.ShowSnackbar(UiText.StringResource(R.string.msg_workout_deleted)), receivedEvent)
+        job.cancel()
+    }
+
+    @Test
     fun deleteFailure_setsErrorMessage_andResetsDeleting() = runTest {
         workoutRepository.setWorkouts(listOf(sampleWorkout1))
         workoutRepository.deleteError = DataError.Database(RuntimeException("Foreign key constraint"))
-        val viewModel = WorkoutListViewModel(workoutRepository)
+        val viewModel = createViewModel()
         advanceUntilIdle()
 
         viewModel.onDeleteRequested(sampleWorkout1)
@@ -169,7 +192,7 @@ class WorkoutListViewModelTest {
     @Test
     fun doubleDelete_preventsDuplicateCall() = runTest {
         workoutRepository.setWorkouts(listOf(sampleWorkout1))
-        val viewModel = WorkoutListViewModel(workoutRepository)
+        val viewModel = createViewModel()
         advanceUntilIdle()
 
         viewModel.onDeleteRequested(sampleWorkout1)
@@ -179,6 +202,70 @@ class WorkoutListViewModelTest {
 
         assertFalse(viewModel.uiState.value.isDeleting)
         assertTrue(viewModel.uiState.value.workouts.isEmpty())
+    }
+
+    @Test
+    fun observationFailure_retainsPreviouslyLoadedWorkouts() = runTest {
+        workoutRepository.setWorkouts(listOf(sampleWorkout1))
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.workouts.size)
+
+        workoutRepository.observeError = DataError.Database(RuntimeException("Intermittent failure"))
+        viewModel.retry()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
+        assertEquals(1, state.workouts.size)
+        assertEquals("Push Day", state.workouts[0].name)
+    }
+
+    @Test
+    fun workoutSaved_recreationDoesNotReplaySnackbar() = runTest {
+        val vm1 = createViewModel()
+        advanceUntilIdle()
+
+        val events1 = mutableListOf<WorkoutListEvent>()
+        val job1 = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm1.events.toList(events1)
+        }
+        vm1.onWorkoutSavedResult()
+        advanceUntilIdle()
+        assertEquals(1, events1.size)
+        job1.cancel()
+
+        // A recreated ViewModel does not replay a previously consumed UI event.
+        val vm2 = createViewModel()
+        advanceUntilIdle()
+
+        val events2 = mutableListOf<WorkoutListEvent>()
+        val job2 = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            vm2.events.toList(events2)
+        }
+        advanceUntilIdle()
+        assertTrue(events2.isEmpty())
+        job2.cancel()
+    }
+
+    @Test
+    fun workoutSavedResult_emitsSingleSnackbar() = runTest {
+        val viewModel = createViewModel()
+        val events = mutableListOf<WorkoutListEvent>()
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.events.toList(events)
+        }
+
+        viewModel.onWorkoutSavedResult()
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(WorkoutListEvent.ShowSnackbar(UiText.StringResource(R.string.msg_workout_saved))),
+            events
+        )
+        job.cancel()
     }
 
     private suspend fun kotlinx.coroutines.flow.Flow<com.haitranduc.fittrack.domain.repository.DataResult<List<Workout>>>.firstSuccessData(): List<Workout> {

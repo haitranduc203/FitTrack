@@ -397,4 +397,193 @@ class WorkoutEditorViewModelTest {
         assertEquals(1, eventsReceived.size)
         job.cancel()
     }
+
+    @Test
+    fun hasUnsavedChanges_tracksModificationsCorrectly() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+
+        viewModel.onNameChanged("My New Workout")
+        assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+
+        viewModel.onNameChanged("")
+        assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+
+        viewModel.onExerciseSelected(exerciseA)
+        assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+
+        viewModel.onRemoveExercise(0)
+        assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+    }
+
+    @Test
+    fun hasUnsavedChanges_resetsAfterSuccessfulSave() = runTest {
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        viewModel.onNameChanged("Leg Day")
+        viewModel.onExerciseSelected(exerciseA)
+        assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+
+        viewModel.onSaveClicked()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.hasUnsavedChanges)
+    }
+
+    @Test
+    fun init_restoresDraftNameFromSavedStateHandle() = runTest {
+        val handle = SavedStateHandle().apply {
+            set(WorkoutEditorViewModel.KEY_DRAFT_NAME, "Restored Draft")
+        }
+        val viewModel = WorkoutEditorViewModel(
+            savedStateHandle = handle,
+            workoutRepository = workoutRepository,
+            exerciseRepository = exerciseRepository,
+            saveWorkoutUseCase = saveWorkoutUseCase,
+            startWorkoutUseCase = startWorkoutUseCase
+        )
+        advanceUntilIdle()
+
+        assertEquals("Restored Draft", viewModel.uiState.value.workoutName)
+        assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+    }
+
+    @Test
+    fun createMode_recreation_restoresDraftNameAndExerciseListInExactOrder_andHasUnsavedChanges() = runTest {
+        val handle = SavedStateHandle()
+        val vm1 = WorkoutEditorViewModel(
+            savedStateHandle = handle,
+            workoutRepository = workoutRepository,
+            exerciseRepository = exerciseRepository,
+            saveWorkoutUseCase = saveWorkoutUseCase,
+            startWorkoutUseCase = startWorkoutUseCase
+        )
+        advanceUntilIdle()
+
+        vm1.onNameChanged("Leg Day")
+        vm1.onExerciseSelected(exerciseA)
+        vm1.onExerciseSelected(exerciseB)
+        vm1.onMoveExerciseDown(0) // Order: [exerciseB, exerciseA]
+        assertEquals(listOf(exerciseB, exerciseA), vm1.uiState.value.exercises)
+
+        // Recreate ViewModel with the exact same SavedStateHandle
+        val vm2 = WorkoutEditorViewModel(
+            savedStateHandle = handle,
+            workoutRepository = workoutRepository,
+            exerciseRepository = exerciseRepository,
+            saveWorkoutUseCase = saveWorkoutUseCase,
+            startWorkoutUseCase = startWorkoutUseCase
+        )
+        advanceUntilIdle()
+
+        assertEquals("Leg Day", vm2.uiState.value.workoutName)
+        assertEquals(listOf(exerciseB, exerciseA), vm2.uiState.value.exercises)
+        assertTrue(vm2.uiState.value.hasUnsavedChanges)
+    }
+
+    @Test
+    fun editMode_recreation_restoresDraftNameAndReorderedExercises_andHasUnsavedChanges() = runTest {
+        val existing = Workout(
+            id = 20L,
+            name = "Upper Body",
+            createdAt = 500L,
+            updatedAt = 600L,
+            exercises = listOf(exerciseA, exerciseB, exerciseC)
+        )
+        workoutRepository.setWorkouts(listOf(existing))
+
+        val handle = SavedStateHandle(mapOf("workoutId" to "20"))
+        val vm1 = WorkoutEditorViewModel(
+            savedStateHandle = handle,
+            workoutRepository = workoutRepository,
+            exerciseRepository = exerciseRepository,
+            saveWorkoutUseCase = saveWorkoutUseCase,
+            startWorkoutUseCase = startWorkoutUseCase
+        )
+        advanceUntilIdle()
+
+        vm1.onNameChanged("Upper Body Heavy")
+        vm1.onMoveExerciseUp(2) // Move exerciseC from index 2 to 1 -> [exerciseA, exerciseC, exerciseB]
+        assertEquals(listOf(exerciseA, exerciseC, exerciseB), vm1.uiState.value.exercises)
+
+        // Recreate ViewModel with the exact same SavedStateHandle
+        val vm2 = WorkoutEditorViewModel(
+            savedStateHandle = handle,
+            workoutRepository = workoutRepository,
+            exerciseRepository = exerciseRepository,
+            saveWorkoutUseCase = saveWorkoutUseCase,
+            startWorkoutUseCase = startWorkoutUseCase
+        )
+        advanceUntilIdle()
+
+        assertEquals("Upper Body Heavy", vm2.uiState.value.workoutName)
+        assertEquals(listOf(exerciseA, exerciseC, exerciseB), vm2.uiState.value.exercises)
+        assertTrue(vm2.uiState.value.hasUnsavedChanges)
+    }
+
+    @Test
+    fun editMode_recreation_restoresIntentionalEmptyExercises_andHasUnsavedChanges() = runTest {
+        val existing = Workout(
+            id = 30L,
+            name = "Arm Day",
+            createdAt = 500L,
+            updatedAt = 600L,
+            exercises = listOf(exerciseA)
+        )
+        workoutRepository.setWorkouts(listOf(existing))
+
+        val handle = SavedStateHandle(mapOf("workoutId" to "30"))
+        val vm1 = WorkoutEditorViewModel(
+            savedStateHandle = handle,
+            workoutRepository = workoutRepository,
+            exerciseRepository = exerciseRepository,
+            saveWorkoutUseCase = saveWorkoutUseCase,
+            startWorkoutUseCase = startWorkoutUseCase
+        )
+        advanceUntilIdle()
+
+        vm1.onRemoveExercise(0)
+        assertTrue(vm1.uiState.value.exercises.isEmpty())
+
+        // Recreate ViewModel with the exact same SavedStateHandle
+        val vm2 = WorkoutEditorViewModel(
+            savedStateHandle = handle,
+            workoutRepository = workoutRepository,
+            exerciseRepository = exerciseRepository,
+            saveWorkoutUseCase = saveWorkoutUseCase,
+            startWorkoutUseCase = startWorkoutUseCase
+        )
+        advanceUntilIdle()
+
+        assertTrue(vm2.uiState.value.exercises.isEmpty())
+        assertTrue(vm2.uiState.value.hasUnsavedChanges)
+    }
+
+    @Test
+    fun saveSuccess_clearsAllDraftKeys_fromSavedStateHandle() = runTest {
+        val handle = SavedStateHandle()
+        val vm1 = WorkoutEditorViewModel(
+            savedStateHandle = handle,
+            workoutRepository = workoutRepository,
+            exerciseRepository = exerciseRepository,
+            saveWorkoutUseCase = saveWorkoutUseCase,
+            startWorkoutUseCase = startWorkoutUseCase
+        )
+        advanceUntilIdle()
+
+        vm1.onNameChanged("Full Body")
+        vm1.onExerciseSelected(exerciseA)
+        assertTrue(handle.contains(WorkoutEditorViewModel.KEY_DRAFT_NAME))
+        assertTrue(handle.contains(WorkoutEditorViewModel.KEY_DRAFT_EXERCISE_IDS))
+
+        vm1.onSaveClicked()
+        advanceUntilIdle()
+
+        assertFalse(handle.contains(WorkoutEditorViewModel.KEY_DRAFT_NAME))
+        assertFalse(handle.contains(WorkoutEditorViewModel.KEY_DRAFT_EXERCISE_IDS))
+        assertFalse(handle.contains(WorkoutEditorViewModel.KEY_DRAFT_EXERCISES_EMPTY))
+    }
 }

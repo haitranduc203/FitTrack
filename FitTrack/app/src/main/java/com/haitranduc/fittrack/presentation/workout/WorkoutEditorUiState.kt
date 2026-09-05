@@ -15,10 +15,12 @@ data class WorkoutEditorUiState(
     val isPickerOpen: Boolean = false,
     val pickerExercises: List<Exercise> = emptyList(),
     val pickerQuery: String = "",
-    val errorMessage: UiText? = null
+    val errorMessage: UiText? = null,
+    val hasUnsavedChanges: Boolean = false
 )
 
 sealed interface WorkoutEditorEvent {
     data class NavigateBack(val workoutId: Long) : WorkoutEditorEvent
     data class NavigateToActiveWorkout(val sessionId: Long) : WorkoutEditorEvent
+    data class ShowSnackbar(val message: UiText) : WorkoutEditorEvent
 }

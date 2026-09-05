@@ -1,5 +1,6 @@
 package com.haitranduc.fittrack.presentation.workout
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,6 +26,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,9 +36,16 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -50,22 +61,54 @@ fun WorkoutEditorScreen(
     workoutId: Long?,
     onNavigateUp: () -> Unit,
     onStartWorkout: (Long) -> Unit,
+    onWorkoutSaved: () -> Unit = onNavigateUp,
     modifier: Modifier = Modifier,
     viewModel: WorkoutEditorViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
+
+    val handleBack: () -> Unit = {
+        if (uiState.hasUnsavedChanges) {
+            showDiscardDialog = true
+        } else {
+            onNavigateUp()
+        }
+    }
+
+    BackHandler(enabled = uiState.isPickerOpen) {
+        viewModel.closeExercisePicker()
+    }
+
+    BackHandler(enabled = !uiState.isPickerOpen && uiState.hasUnsavedChanges) {
+        showDiscardDialog = true
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is WorkoutEditorEvent.NavigateBack -> onNavigateUp()
+                is WorkoutEditorEvent.NavigateBack -> onWorkoutSaved()
                 is WorkoutEditorEvent.NavigateToActiveWorkout -> onStartWorkout(event.sessionId)
+                is WorkoutEditorEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message.asString(context))
+                }
             }
         }
     }
 
     WorkoutEditorContent(
         uiState = uiState,
+        snackbarHostState = snackbarHostState,
+        showDiscardDialog = showDiscardDialog,
+        onConfirmDiscard = {
+            showDiscardDialog = false
+            onNavigateUp()
+        },
+        onDismissDiscard = {
+            showDiscardDialog = false
+        },
         onNameChanged = viewModel::onNameChanged,
         onAddExerciseClick = viewModel::openExercisePicker,
         onRemoveExercise = viewModel::onRemoveExercise,
@@ -76,7 +119,7 @@ fun WorkoutEditorScreen(
         onPickerDismiss = viewModel::closeExercisePicker,
         onPickerQueryChange = viewModel::onPickerQueryChanged,
         onPickerExerciseSelect = viewModel::onExerciseSelected,
-        onNavigateUp = onNavigateUp,
+        onNavigateUp = handleBack,
         modifier = modifier
     )
 }
@@ -96,10 +139,15 @@ fun WorkoutEditorContent(
     onPickerQueryChange: (String) -> Unit,
     onPickerExerciseSelect: (Exercise) -> Unit,
     onNavigateUp: () -> Unit,
+    showDiscardDialog: Boolean = false,
+    onConfirmDiscard: () -> Unit = {},
+    onDismissDiscard: () -> Unit = {},
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     modifier: Modifier = Modifier
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -110,7 +158,8 @@ fun WorkoutEditorContent(
                             uiState.workoutName.ifEmpty { stringResource(R.string.title_edit_workout) }
                         },
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.semantics { heading() }
                     )
                 },
                 navigationIcon = {
@@ -228,7 +277,8 @@ fun WorkoutEditorContent(
                             text = stringResource(R.string.section_exercises),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.semantics { heading() }
                         )
                         OutlinedButton(
                             onClick = onAddExerciseClick,
@@ -255,7 +305,37 @@ fun WorkoutEditorContent(
                             .fillMaxWidth(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        itemsIndexed(uiState.exercises, key = { _, exercise -> exercise.id }) { index, exercise ->
+                        if (uiState.exercises.isEmpty()) {
+                            item {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(24.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.error_workout_exercises_empty),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            itemsIndexed(
+                                items = uiState.exercises,
+                                key = { _, exercise -> exercise.id },
+                                contentType = { _, _ -> "editor_exercise_item" }
+                            ) { index, exercise ->
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
@@ -337,6 +417,7 @@ fun WorkoutEditorContent(
                             }
                         }
                     }
+                    }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -374,6 +455,39 @@ fun WorkoutEditorContent(
         onExerciseSelect = onPickerExerciseSelect,
         onDismiss = onPickerDismiss
     )
+
+    if (showDiscardDialog) {
+        AlertDialog(
+            onDismissRequest = onDismissDiscard,
+            title = {
+                Text(
+                    text = stringResource(R.string.dialog_discard_changes_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.dialog_discard_changes_message),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = onConfirmDiscard) {
+                    Text(
+                        text = stringResource(R.string.action_discard),
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismissDiscard) {
+                    Text(text = stringResource(R.string.action_keep_editing))
+                }
+            }
+        )
+    }
 }
 
 @Preview(showBackground = true, name = "Workout Editor - Create Mode")
@@ -404,6 +518,65 @@ private fun WorkoutEditorCreatePreview() {
 @Composable
 private fun WorkoutEditorEditPreview() {
     FitTrackTheme {
+        WorkoutEditorContent(
+            uiState = WorkoutEditorUiState(
+                workoutId = 1L,
+                workoutName = "Push Day",
+                exercises = listOf(
+                    Exercise(
+                        id = "0025",
+                        name = "barbell bench press",
+                        bodyPart = "chest",
+                        equipment = "barbell",
+                        target = "pectorals",
+                        muscleGroup = "triceps",
+                        secondaryMuscles = listOf("triceps", "shoulders"),
+                        instructions = listOf("Lie on bench", "Press bar")
+                    )
+                )
+            ),
+            onNameChanged = {},
+            onAddExerciseClick = {},
+            onRemoveExercise = {},
+            onMoveUp = {},
+            onMoveDown = {},
+            onSaveClick = {},
+            onStartClick = {},
+            onPickerDismiss = {},
+            onPickerQueryChange = {},
+            onPickerExerciseSelect = {},
+            onNavigateUp = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Workout Editor - Loading")
+@Composable
+private fun WorkoutEditorLoadingPreview() {
+    FitTrackTheme {
+        WorkoutEditorContent(
+            uiState = WorkoutEditorUiState(
+                isLoading = true
+            ),
+            onNameChanged = {},
+            onAddExerciseClick = {},
+            onRemoveExercise = {},
+            onMoveUp = {},
+            onMoveDown = {},
+            onSaveClick = {},
+            onStartClick = {},
+            onPickerDismiss = {},
+            onPickerQueryChange = {},
+            onPickerExerciseSelect = {},
+            onNavigateUp = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Workout Editor - Dark")
+@Composable
+private fun WorkoutEditorDarkPreview() {
+    FitTrackTheme(darkTheme = true) {
         WorkoutEditorContent(
             uiState = WorkoutEditorUiState(
                 workoutId = 1L,

@@ -3,6 +3,7 @@ package com.haitranduc.fittrack.presentation.exercise
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.repository.DataResult
 import com.haitranduc.fittrack.domain.repository.ExerciseRepository
 import com.haitranduc.fittrack.domain.repository.FavoriteExerciseRepository
@@ -10,6 +11,7 @@ import com.haitranduc.fittrack.presentation.util.UiText
 import com.haitranduc.fittrack.presentation.util.toUiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -17,9 +19,14 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+sealed interface ExerciseDetailEvent {
+    data class ShowSnackbar(val message: UiText) : ExerciseDetailEvent
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -34,6 +41,11 @@ class ExerciseDetailViewModel @Inject constructor(
     private val favoriteErrorMessage = MutableStateFlow<UiText?>(null)
     private val retryTrigger = MutableStateFlow(0)
 
+    private val _events = Channel<ExerciseDetailEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
+
+    private var lastExercise: com.haitranduc.fittrack.domain.model.Exercise? = null
+
     val uiState: StateFlow<ExerciseDetailUiState> = combine(
         exerciseIdFlow,
         retryTrigger
@@ -43,7 +55,7 @@ class ExerciseDetailViewModel @Inject constructor(
                 flowOf(ExerciseDetailUiState(isLoading = false, isMissing = true))
             } else {
                 flow {
-                    emit(ExerciseDetailUiState(isLoading = true))
+                    emit(ExerciseDetailUiState(isLoading = lastExercise == null, exercise = lastExercise))
 
                     combine(
                         exerciseRepository.observeExercise(id),
@@ -54,8 +66,10 @@ class ExerciseDetailViewModel @Inject constructor(
                         when (exerciseResult) {
                             is DataResult.Success -> {
                                 if (exerciseResult.data == null) {
+                                    lastExercise = null
                                     ExerciseDetailUiState(isLoading = false, isMissing = true)
                                 } else {
+                                    lastExercise = exerciseResult.data
                                     val isFav: Boolean?
                                     val favErrorToSurface: UiText?
                                     when (favoriteIdsResult) {
@@ -80,6 +94,7 @@ class ExerciseDetailViewModel @Inject constructor(
                             is DataResult.Failure -> {
                                 ExerciseDetailUiState(
                                     isLoading = false,
+                                    exercise = lastExercise,
                                     errorMessage = exerciseResult.error.toUiText(),
                                     isTogglingFavorite = toggling,
                                     favoriteErrorMessage = favError
@@ -110,10 +125,18 @@ class ExerciseDetailViewModel @Inject constructor(
             try {
                 when (val res = favoriteExerciseRepository.setFavorite(exerciseId, !isCurrentlyFav)) {
                     is DataResult.Success -> {
-                        // Handled reactively via Flow
+                        _events.send(
+                            ExerciseDetailEvent.ShowSnackbar(
+                                UiText.StringResource(
+                                    if (!isCurrentlyFav) R.string.msg_favorite_added else R.string.msg_favorite_removed
+                                )
+                            )
+                        )
                     }
                     is DataResult.Failure -> {
-                        favoriteErrorMessage.value = res.error.toUiText()
+                        val err = res.error.toUiText()
+                        favoriteErrorMessage.value = err
+                        _events.send(ExerciseDetailEvent.ShowSnackbar(err))
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {

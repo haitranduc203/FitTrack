@@ -58,7 +58,10 @@
     <string name="cd_dismiss_error">Dismiss error</string>
     <string name="label_body_part_filter">Body Part</string>
     <string name="label_equipment_filter">Equipment</string>
-    <string name="empty_exercises">No exercises found matching your search.</string>
+    <string name="empty_exercises">No exercises available.</string>
+    <string name="empty_exercises_search">No exercises match your search or filter criteria.</string>
+    <string name="empty_exercises_favorites">No favorite exercises yet. Tap the star icon on any exercise to add it.</string>
+    <string name="action_clear_filters">Clear filters</string>
     <string name="loading_startup">Initializing exercise library&#8230;</string>
     <string name="error_startup">Failed to initialize exercise library.</string>
     <string name="action_retry">Retry</string>
@@ -220,4 +223,18 @@
     <string name="error_invalid_weight">Weight must be between 0 and 1000 kg.</string>
     <string name="error_invalid_reps_number">Reps must be a valid number.</string>
     <string name="error_invalid_weight_number">Weight must be a valid number.</string>
+    <string name="error_exercise_not_found">Exercise not found.</string>
+    <string name="error_history_not_found">Workout summary not found.</string>
+
+    <!-- Snackbar Messages -->
+    <string name="msg_workout_deleted">Workout deleted.</string>
+    <string name="msg_favorite_added">Added to favorites.</string>
+    <string name="msg_favorite_removed">Removed from favorites.</string>
+    <string name="msg_workout_saved">Workout saved.</string>
+
+    <!-- Discard Changes Dialog -->
+    <string name="dialog_discard_changes_title">Discard changes?</string>
+    <string name="dialog_discard_changes_message">You have unsaved changes. Are you sure you want to discard them?</string>
+    <string name="action_discard">Discard</string>
+    <string name="action_keep_editing">Keep editing</string>
 </resources>

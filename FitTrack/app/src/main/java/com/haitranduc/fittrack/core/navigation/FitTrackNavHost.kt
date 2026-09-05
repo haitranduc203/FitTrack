@@ -36,9 +36,11 @@ import com.haitranduc.fittrack.presentation.history.HistoryDetailScreen
 import com.haitranduc.fittrack.presentation.history.HistoryScreen
 import com.haitranduc.fittrack.presentation.settings.SettingsScreen
 import com.haitranduc.fittrack.presentation.startup.FitTrackViewModel
+import com.haitranduc.fittrack.presentation.startup.StartupScreen
 import com.haitranduc.fittrack.presentation.startup.StartupUiState
 import com.haitranduc.fittrack.presentation.workout.WorkoutEditorScreen
 import com.haitranduc.fittrack.presentation.workout.WorkoutListScreen
+import com.haitranduc.fittrack.presentation.workout.WorkoutListViewModel
 
 @Composable
 fun FitTrackNavHost(
@@ -62,55 +64,16 @@ fun FitTrackNavHostContent(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController()
 ) {
-    when (startupState) {
-        is StartupUiState.Loading -> {
-            Box(
-                modifier = modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    CircularProgressIndicator()
-                    Text(
-                        text = stringResource(R.string.loading_startup),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-        is StartupUiState.Error -> {
-            Box(
-                modifier = modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.padding(24.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.error_startup),
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    startupState.message?.let {
-                        Text(
-                            text = it.asString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    Button(onClick = onRetryStartup) {
-                        Text(text = stringResource(R.string.action_retry))
-                    }
-                }
-            }
-        }
-        is StartupUiState.Ready -> {
-            val navBackStackEntry by navController.currentBackStackEntryAsState()
+    if (startupState !is StartupUiState.Ready) {
+        StartupScreen(
+            startupState = startupState,
+            onRetryStartup = onRetryStartup,
+            modifier = modifier
+        )
+        return
+    }
+
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
 
             val topLevelRoutes = setOf(
@@ -231,13 +194,21 @@ fun FitTrackNavHostContent(
                         )
                     }
 
-                    composable(FitTrackDestination.WORKOUTS) {
+                    composable(FitTrackDestination.WORKOUTS) { backStackEntry ->
+                        val workoutSaved by backStackEntry.savedStateHandle
+                            .getStateFlow(WorkoutListViewModel.KEY_WORKOUT_SAVED, false)
+                            .collectAsStateWithLifecycle()
+
                         WorkoutListScreen(
                             onCreateWorkout = {
                                 navController.navigate(FitTrackDestination.WORKOUT_EDITOR)
                             },
                             onWorkoutClick = { workoutId ->
                                 navController.navigate(FitTrackDestination.workoutEditorRoute(workoutId))
+                            },
+                            workoutSavedResult = workoutSaved,
+                            onConsumeWorkoutSavedResult = {
+                                backStackEntry.savedStateHandle.remove<Boolean>(WorkoutListViewModel.KEY_WORKOUT_SAVED)
                             }
                         )
                     }
@@ -246,6 +217,13 @@ fun FitTrackNavHostContent(
                         WorkoutEditorScreen(
                             workoutId = null,
                             onNavigateUp = { navController.navigateUp() },
+                            onWorkoutSaved = {
+                                navController.previousBackStackEntry?.savedStateHandle?.set(
+                                    WorkoutListViewModel.KEY_WORKOUT_SAVED,
+                                    true
+                                )
+                                navController.navigateUp()
+                            },
                             onStartWorkout = { sessionId ->
                                 navController.navigate(FitTrackDestination.activeWorkoutRoute(sessionId)) {
                                     launchSingleTop = true
@@ -259,6 +237,13 @@ fun FitTrackNavHostContent(
                         WorkoutEditorScreen(
                             workoutId = workoutId,
                             onNavigateUp = { navController.navigateUp() },
+                            onWorkoutSaved = {
+                                navController.previousBackStackEntry?.savedStateHandle?.set(
+                                    WorkoutListViewModel.KEY_WORKOUT_SAVED,
+                                    true
+                                )
+                                navController.navigateUp()
+                            },
                             onStartWorkout = { sessionId ->
                                 navController.navigate(FitTrackDestination.activeWorkoutRoute(sessionId)) {
                                     launchSingleTop = true
@@ -299,6 +284,4 @@ fun FitTrackNavHostContent(
                     }
                 }
             }
-        }
-    }
 }

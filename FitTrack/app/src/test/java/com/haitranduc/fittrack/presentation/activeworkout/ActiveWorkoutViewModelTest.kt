@@ -3,7 +3,6 @@ package com.haitranduc.fittrack.presentation.activeworkout
 import androidx.lifecycle.SavedStateHandle
 import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.Exercise
-import com.haitranduc.fittrack.domain.model.SetLog
 import com.haitranduc.fittrack.domain.model.Workout
 import com.haitranduc.fittrack.domain.model.WorkoutSession
 import com.haitranduc.fittrack.domain.repository.DataError
@@ -23,7 +22,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -429,5 +427,21 @@ class ActiveWorkoutViewModelTest {
         assertEquals(0L, vm.uiState.value.restTimerRemainingSeconds)
         assertNull(vm.uiState.value.restTimerEndsAtMillis)
         assertNull(handle.get<Long>("rest_timer_ends_at_millis"))
+    }
+
+    @Test
+    fun viewModelInit_withSavedInputValues_restoresRepsAndWeightInputs() = runTest {
+        val handle = SavedStateHandle(
+            mapOf(
+                "sessionId" to 10L,
+                "input_reps_e1" to "12",
+                "input_weight_e1" to "65.5"
+            )
+        )
+        val vm = createViewModel(sessionId = 10L, handle = handle)
+        advanceUntilIdle()
+
+        assertEquals("12", vm.uiState.value.inputReps["e1"])
+        assertEquals("65.5", vm.uiState.value.inputWeight["e1"])
     }
 }

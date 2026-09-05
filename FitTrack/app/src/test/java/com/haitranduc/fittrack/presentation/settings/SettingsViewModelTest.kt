@@ -8,6 +8,7 @@ import com.haitranduc.fittrack.testing.FakeThemePreferenceRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -153,6 +154,42 @@ class SettingsViewModelTest {
         assertEquals(UiText.StringResource(R.string.error_database), viewModel.uiState.value.errorMessage)
         assertEquals(ThemePreference.DARK, viewModel.uiState.value.selectedTheme)
 
+        collectJob.cancel()
+    }
+
+    @Test
+    fun onThemeSelected_writeFailure_emitsOneShotSnackbar_withSingleConsumptionAndNoReplay() = runTest(testDispatcher) {
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        val events = mutableListOf<SettingsEvent>()
+        val eventsJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.events.toList(events)
+        }
+
+        repository.setError = DataError.Database(RuntimeException("Disk write error"))
+        viewModel.onThemeSelected(ThemePreference.DARK)
+        advanceUntilIdle()
+
+        assertEquals(1, events.size)
+        assertEquals(
+            SettingsEvent.ShowSnackbar(UiText.StringResource(R.string.error_database)),
+            events[0]
+        )
+
+        // Cancel first collector; subsequent collector should see no replay
+        eventsJob.cancel()
+
+        val replayedEvents = mutableListOf<SettingsEvent>()
+        val replayJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.events.toList(replayedEvents)
+        }
+        advanceUntilIdle()
+        assertTrue(replayedEvents.isEmpty())
+
+        replayJob.cancel()
         collectJob.cancel()
     }
 }

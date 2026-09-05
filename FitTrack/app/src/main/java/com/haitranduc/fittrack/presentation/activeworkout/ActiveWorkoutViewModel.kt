@@ -105,7 +105,19 @@ class ActiveWorkoutViewModel @Inject constructor(
             val workoutResult = workoutRepository.observeWorkout(workoutId).first()
             if (workoutResult is DataResult.Success) {
                 val exercises = workoutResult.data?.exercises ?: emptyList()
-                _uiState.update { it.copy(exercises = exercises) }
+                val restoredReps = exercises.mapNotNull { ex ->
+                    savedStateHandle.get<String>("input_reps_${ex.id}")?.let { ex.id to it }
+                }.toMap()
+                val restoredWeights = exercises.mapNotNull { ex ->
+                    savedStateHandle.get<String>("input_weight_${ex.id}")?.let { ex.id to it }
+                }.toMap()
+                _uiState.update {
+                    it.copy(
+                        exercises = exercises,
+                        inputReps = it.inputReps + restoredReps,
+                        inputWeight = it.inputWeight + restoredWeights
+                    )
+                }
             }
         }
     }
@@ -153,12 +165,14 @@ class ActiveWorkoutViewModel @Inject constructor(
     }
 
     fun onRepsChanged(exerciseId: String, reps: String) {
+        savedStateHandle["input_reps_$exerciseId"] = reps
         _uiState.update {
             it.copy(inputReps = it.inputReps + (exerciseId to reps))
         }
     }
 
     fun onWeightChanged(exerciseId: String, weight: String) {
+        savedStateHandle["input_weight_$exerciseId"] = weight
         _uiState.update {
             it.copy(inputWeight = it.inputWeight + (exerciseId to weight))
         }
@@ -193,47 +207,54 @@ class ActiveWorkoutViewModel @Inject constructor(
         _uiState.update { it.copy(isCompletingSet = true) }
 
         viewModelScope.launch {
-            when (val res = completeSetUseCase(sid, exercise.id, exercise.name, nextSetNumber, reps, weight)) {
-                is CompleteSetResult.Success -> {
-                    startRestTimer()
-                    _uiState.update {
-                        it.copy(
-                            isCompletingSet = false,
-                            inputErrors = it.inputErrors - exercise.id
-                        )
+            try {
+                when (val res = completeSetUseCase(sid, exercise.id, exercise.name, nextSetNumber, reps, weight)) {
+                    is CompleteSetResult.Success -> {
+                        savedStateHandle.remove<String>("input_reps_${exercise.id}")
+                        savedStateHandle.remove<String>("input_weight_${exercise.id}")
+                        startRestTimer()
+                        _uiState.update {
+                            it.copy(
+                                inputErrors = it.inputErrors - exercise.id
+                            )
+                        }
+                    }
+                    CompleteSetResult.InvalidReps -> {
+                        _uiState.update {
+                            it.copy(
+                                inputErrors = it.inputErrors + (exercise.id to UiText.StringResource(R.string.error_invalid_reps))
+                            )
+                        }
+                    }
+                    CompleteSetResult.InvalidWeight -> {
+                        _uiState.update {
+                            it.copy(
+                                inputErrors = it.inputErrors + (exercise.id to UiText.StringResource(R.string.error_invalid_weight))
+                            )
+                        }
+                    }
+                    CompleteSetResult.SessionNotFound -> {
+                        _uiState.update {
+                            it.copy(isMissing = true)
+                        }
+                    }
+                    CompleteSetResult.SessionAlreadyFinished -> {
+                        _uiState.update {
+                            it.copy(errorMessage = UiText.StringResource(R.string.error_session_already_finished))
+                        }
+                    }
+                    is CompleteSetResult.Failure -> {
+                        _uiState.update {
+                            it.copy(errorMessage = res.error.toUiText())
+                        }
                     }
                 }
-                CompleteSetResult.InvalidReps -> {
-                    _uiState.update {
-                        it.copy(
-                            isCompletingSet = false,
-                            inputErrors = it.inputErrors + (exercise.id to UiText.StringResource(R.string.error_invalid_reps))
-                        )
-                    }
-                }
-                CompleteSetResult.InvalidWeight -> {
-                    _uiState.update {
-                        it.copy(
-                            isCompletingSet = false,
-                            inputErrors = it.inputErrors + (exercise.id to UiText.StringResource(R.string.error_invalid_weight))
-                        )
-                    }
-                }
-                CompleteSetResult.SessionNotFound -> {
-                    _uiState.update {
-                        it.copy(isCompletingSet = false, isMissing = true)
-                    }
-                }
-                CompleteSetResult.SessionAlreadyFinished -> {
-                    _uiState.update {
-                        it.copy(isCompletingSet = false, errorMessage = UiText.StringResource(R.string.error_session_already_finished))
-                    }
-                }
-                is CompleteSetResult.Failure -> {
-                    _uiState.update {
-                        it.copy(isCompletingSet = false, errorMessage = res.error.toUiText())
-                    }
-                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: java.lang.Error) {
+                throw e
+            } finally {
+                _uiState.update { it.copy(isCompletingSet = false) }
             }
         }
     }
@@ -245,35 +266,42 @@ class ActiveWorkoutViewModel @Inject constructor(
         _uiState.update { it.copy(isFinishing = true, finishError = null) }
 
         viewModelScope.launch {
-            when (val res = finishWorkoutUseCase(sid)) {
-                is FinishWorkoutResult.Success -> {
-                    _uiState.update {
-                        it.copy(isFinishing = false, finishedSessionId = res.sessionId)
+            try {
+                when (val res = finishWorkoutUseCase(sid)) {
+                    is FinishWorkoutResult.Success -> {
+                        _uiState.update {
+                            it.copy(finishedSessionId = res.sessionId)
+                        }
+                    }
+                    FinishWorkoutResult.NoSetsCompleted -> {
+                        _uiState.update {
+                            it.copy(
+                                finishError = UiText.StringResource(R.string.error_no_completed_sets)
+                            )
+                        }
+                    }
+                    FinishWorkoutResult.SessionAlreadyFinished -> {
+                        _uiState.update {
+                            it.copy(finishedSessionId = sid)
+                        }
+                    }
+                    FinishWorkoutResult.SessionNotFound -> {
+                        _uiState.update {
+                            it.copy(finishError = UiText.StringResource(R.string.error_session_not_found))
+                        }
+                    }
+                    is FinishWorkoutResult.Failure -> {
+                        _uiState.update {
+                            it.copy(finishError = res.error.toUiText())
+                        }
                     }
                 }
-                FinishWorkoutResult.NoSetsCompleted -> {
-                    _uiState.update {
-                        it.copy(
-                            isFinishing = false,
-                            finishError = UiText.StringResource(R.string.error_no_completed_sets)
-                        )
-                    }
-                }
-                FinishWorkoutResult.SessionAlreadyFinished -> {
-                    _uiState.update {
-                        it.copy(isFinishing = false, finishedSessionId = sid)
-                    }
-                }
-                FinishWorkoutResult.SessionNotFound -> {
-                    _uiState.update {
-                        it.copy(isFinishing = false, finishError = UiText.StringResource(R.string.error_session_not_found))
-                    }
-                }
-                is FinishWorkoutResult.Failure -> {
-                    _uiState.update {
-                        it.copy(isFinishing = false, finishError = res.error.toUiText())
-                    }
-                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: java.lang.Error) {
+                throw e
+            } finally {
+                _uiState.update { it.copy(isFinishing = false) }
             }
         }
     }

@@ -24,16 +24,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -49,13 +56,35 @@ import com.haitranduc.fittrack.domain.model.Workout
 fun WorkoutListScreen(
     onCreateWorkout: () -> Unit,
     onWorkoutClick: (Long) -> Unit,
+    workoutSavedResult: Boolean = false,
+    onConsumeWorkoutSavedResult: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: WorkoutListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+
+    LaunchedEffect(workoutSavedResult) {
+        if (workoutSavedResult) {
+            onConsumeWorkoutSavedResult()
+            viewModel.onWorkoutSavedResult()
+        }
+    }
+
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is WorkoutListEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message.asString(context))
+                }
+            }
+        }
+    }
 
     WorkoutListContent(
         uiState = uiState,
+        snackbarHostState = snackbarHostState,
         onCreateWorkout = onCreateWorkout,
         onWorkoutClick = onWorkoutClick,
         onDeleteClick = viewModel::onDeleteRequested,
@@ -76,17 +105,20 @@ fun WorkoutListContent(
     onConfirmDelete: () -> Unit,
     onDismissDelete: () -> Unit,
     onRetry: () -> Unit = {},
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     modifier: Modifier = Modifier
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = stringResource(R.string.title_workouts),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.semantics { heading() }
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -122,62 +154,98 @@ fun WorkoutListContent(
                 ) {
                     CircularProgressIndicator()
                 }
-            } else if (uiState.errorMessage != null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
+            } else if (uiState.workouts.isEmpty()) {
+                if (uiState.errorMessage != null) {
+                    Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                            .padding(vertical = 24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        ),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
-                        Text(
-                            text = uiState.errorMessage.asString(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
-                        Button(onClick = onRetry) {
-                            Text(text = stringResource(R.string.action_retry))
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = uiState.errorMessage.asString(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Button(onClick = onRetry) {
+                                Text(text = stringResource(R.string.action_retry))
+                            }
+                        }
+                    }
+                } else {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = stringResource(R.string.empty_workouts),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
                 }
-            } else if (uiState.workouts.isEmpty()) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 24.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = RoundedCornerShape(16.dp)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = stringResource(R.string.empty_workouts),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(uiState.workouts, key = { it.id }) { workout ->
+                Column(modifier = Modifier.fillMaxSize()) {
+                    if (uiState.errorMessage != null) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = uiState.errorMessage.asString(),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Button(onClick = onRetry) {
+                                    Text(text = stringResource(R.string.action_retry))
+                                }
+                            }
+                        }
+                    }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                    items(
+                        items = uiState.workouts,
+                        key = { it.id },
+                        contentType = { "workout_item" }
+                    ) { workout ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -246,12 +314,13 @@ fun WorkoutListContent(
                     }
                 }
             }
+            }
         }
     }
 
     if (uiState.workoutToDelete != null) {
         AlertDialog(
-            onDismissRequest = onDismissDelete,
+            onDismissRequest = { if (!uiState.isDeleting) onDismissDelete() },
             title = {
                 Text(
                     text = stringResource(R.string.dialog_delete_workout_title),
@@ -362,6 +431,61 @@ private fun WorkoutListContentEmptyPreview() {
             uiState = WorkoutListUiState(
                 isLoading = false,
                 workouts = emptyList()
+            ),
+            onCreateWorkout = {},
+            onWorkoutClick = {},
+            onDeleteClick = {},
+            onConfirmDelete = {},
+            onDismissDelete = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Workout List - Loading")
+@Composable
+private fun WorkoutListContentLoadingPreview() {
+    FitTrackTheme {
+        WorkoutListContent(
+            uiState = WorkoutListUiState(
+                isLoading = true,
+                workouts = emptyList()
+            ),
+            onCreateWorkout = {},
+            onWorkoutClick = {},
+            onDeleteClick = {},
+            onConfirmDelete = {},
+            onDismissDelete = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Workout List - Dark")
+@Composable
+private fun WorkoutListContentDarkPreview() {
+    FitTrackTheme(darkTheme = true) {
+        WorkoutListContent(
+            uiState = WorkoutListUiState(
+                isLoading = false,
+                workouts = listOf(
+                    Workout(
+                        id = 1L,
+                        name = "Push Day",
+                        createdAt = 1000L,
+                        updatedAt = 1000L,
+                        exercises = listOf(
+                            Exercise(
+                                id = "0025",
+                                name = "barbell bench press",
+                                bodyPart = "chest",
+                                equipment = "barbell",
+                                target = "pectorals",
+                                muscleGroup = "triceps",
+                                secondaryMuscles = listOf("triceps", "shoulders"),
+                                instructions = listOf("Lie on bench", "Press bar")
+                            )
+                        )
+                    )
+                )
             ),
             onCreateWorkout = {},
             onWorkoutClick = {},

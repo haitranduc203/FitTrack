@@ -11,7 +11,6 @@ import com.haitranduc.fittrack.domain.model.Exercise
 import com.haitranduc.fittrack.domain.repository.DataError
 import com.haitranduc.fittrack.domain.repository.DataResult
 import com.haitranduc.fittrack.domain.repository.ExerciseRepository
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map

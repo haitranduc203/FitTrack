@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
@@ -23,15 +22,22 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -49,8 +55,22 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is SettingsEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message.asString(context))
+                }
+            }
+        }
+    }
+
     SettingsContent(
         uiState = uiState,
+        snackbarHostState = snackbarHostState,
         onThemeSelected = viewModel::onThemeSelected,
         onClearError = viewModel::onClearError,
         onRetry = viewModel::retry,
@@ -65,17 +85,20 @@ fun SettingsContent(
     onThemeSelected: (ThemePreference) -> Unit,
     onClearError: () -> Unit,
     onRetry: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     modifier: Modifier = Modifier
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = stringResource(R.string.title_settings),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.semantics { heading() }
                     )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -148,7 +171,8 @@ fun SettingsContent(
                     text = stringResource(R.string.section_theme),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.semantics { heading() }
                 )
 
                 Card(
@@ -243,7 +267,7 @@ private fun SettingsScreenDefaultPreview() {
 @Preview(showBackground = true, name = "Settings Screen - Dark Selected")
 @Composable
 private fun SettingsScreenDarkPreview() {
-    FitTrackTheme {
+    FitTrackTheme(darkTheme = true) {
         SettingsContent(
             uiState = SettingsUiState(
                 selectedTheme = ThemePreference.DARK
@@ -263,6 +287,21 @@ private fun SettingsScreenErrorPreview() {
             uiState = SettingsUiState(
                 selectedTheme = ThemePreference.SYSTEM,
                 errorMessage = UiText.StringResource(R.string.error_database)
+            ),
+            onThemeSelected = {},
+            onClearError = {},
+            onRetry = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Settings Screen - Loading")
+@Composable
+private fun SettingsScreenLoadingPreview() {
+    FitTrackTheme {
+        SettingsContent(
+            uiState = SettingsUiState(
+                isLoading = true
             ),
             onThemeSelected = {},
             onClearError = {},

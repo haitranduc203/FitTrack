@@ -49,3 +49,14 @@ val LightOnSurface = Color(0xFF181C20)
 val LightSurfaceVariant = Color(0xFFE1E2EC)
 val LightOnSurfaceVariant = Color(0xFF44474F)
 val LightOutline = Color(0xFF74777F)
+
+// Error Colors
+val DarkError = Color(0xFFFFB4AB)
+val DarkOnError = Color(0xFF690005)
+val DarkErrorContainer = Color(0xFF93000A)
+val DarkOnErrorContainer = Color(0xFFFFDAD6)
+
+val LightError = Color(0xFFBA1A1A)
+val LightOnError = Color(0xFFFFFFFF)
+val LightErrorContainer = Color(0xFFFFDAD6)
+val LightOnErrorContainer = Color(0xFF410002)

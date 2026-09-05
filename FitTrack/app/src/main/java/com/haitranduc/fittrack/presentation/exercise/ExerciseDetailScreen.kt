@@ -29,12 +29,19 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -53,8 +60,22 @@ fun ExerciseDetailScreen(
     viewModel: ExerciseDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is ExerciseDetailEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message.asString(context))
+                }
+            }
+        }
+    }
+
     ExerciseDetailContent(
         uiState = uiState,
+        snackbarHostState = snackbarHostState,
         onNavigateUp = onNavigateUp,
         onToggleFavorite = viewModel::onToggleFavorite,
         onClearFavoriteError = viewModel::onClearFavoriteError,
@@ -71,19 +92,22 @@ fun ExerciseDetailContent(
     onToggleFavorite: () -> Unit,
     onClearFavoriteError: () -> Unit,
     onRetry: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     modifier: Modifier = Modifier
 ) {
     val exercise = uiState.exercise
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = exercise?.name ?: stringResource(R.string.title_exercise_detail),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.semantics { heading() }
                     )
                 },
                 navigationIcon = {
@@ -127,41 +151,59 @@ fun ExerciseDetailContent(
                     CircularProgressIndicator()
                 }
             }
-            uiState.errorMessage != null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.padding(24.dp)
+            uiState.isMissing || exercise == null -> {
+                if (uiState.errorMessage != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text(
-                            text = uiState.errorMessage.asString(),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Button(onClick = onRetry) {
-                            Text(text = stringResource(R.string.action_retry))
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.padding(24.dp)
+                        ) {
+                            Text(
+                                text = uiState.errorMessage.asString(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Button(onClick = onRetry) {
+                                Text(text = stringResource(R.string.action_retry))
+                            }
                         }
                     }
-                }
-            }
-            uiState.isMissing || exercise == null -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.empty_exercises),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(innerPadding)
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.error_exercise_not_found),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Button(onClick = onNavigateUp) {
+                                    Text(text = stringResource(R.string.cd_navigate_up))
+                                }
+                            }
+                        }
+                    }
                 }
             }
             else -> {
@@ -173,6 +215,33 @@ fun ExerciseDetailContent(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    if (uiState.errorMessage != null) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = uiState.errorMessage.asString(),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Button(onClick = onRetry) {
+                                    Text(text = stringResource(R.string.action_retry))
+                                }
+                            }
+                        }
+                    }
                     if (uiState.favoriteErrorMessage != null) {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -225,13 +294,13 @@ fun ExerciseDetailContent(
                                 modifier = Modifier
                                     .size(52.dp)
                                     .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = FitTrackIcons.Exercises,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.size(28.dp)
                                 )
                             }
@@ -246,7 +315,7 @@ fun ExerciseDetailContent(
                             Text(
                                 text = stringResource(R.string.placeholder_media_subtitle),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -296,7 +365,8 @@ fun ExerciseDetailContent(
                                 text = stringResource(R.string.label_instructions),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.semantics { heading() }
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             exercise.instructions.forEachIndexed { index, step ->
@@ -370,6 +440,65 @@ private fun MetadataRow(label: String, value: String) {
 @Composable
 private fun ExerciseDetailScreenPreview() {
     FitTrackTheme {
+        ExerciseDetailContent(
+            uiState = ExerciseDetailUiState(
+                exercise = Exercise(
+                    id = "0025",
+                    name = "barbell bench press",
+                    bodyPart = "chest",
+                    equipment = "barbell",
+                    target = "pectorals",
+                    muscleGroup = "triceps",
+                    secondaryMuscles = listOf("triceps", "shoulders"),
+                    instructions = listOf("Lie on bench", "Lower bar", "Press up")
+                ),
+                isFavorite = true
+            ),
+            onNavigateUp = {},
+            onToggleFavorite = {},
+            onClearFavoriteError = {},
+            onRetry = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Exercise Detail Screen - Loading")
+@Composable
+private fun ExerciseDetailScreenLoadingPreview() {
+    FitTrackTheme {
+        ExerciseDetailContent(
+            uiState = ExerciseDetailUiState(
+                isLoading = true
+            ),
+            onNavigateUp = {},
+            onToggleFavorite = {},
+            onClearFavoriteError = {},
+            onRetry = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Exercise Detail Screen - Missing")
+@Composable
+private fun ExerciseDetailScreenMissingPreview() {
+    FitTrackTheme {
+        ExerciseDetailContent(
+            uiState = ExerciseDetailUiState(
+                isLoading = false,
+                isMissing = true
+            ),
+            onNavigateUp = {},
+            onToggleFavorite = {},
+            onClearFavoriteError = {},
+            onRetry = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Exercise Detail Screen - Dark")
+@Composable
+private fun ExerciseDetailScreenDarkPreview() {
+    FitTrackTheme(darkTheme = true) {
         ExerciseDetailContent(
             uiState = ExerciseDetailUiState(
                 exercise = Exercise(

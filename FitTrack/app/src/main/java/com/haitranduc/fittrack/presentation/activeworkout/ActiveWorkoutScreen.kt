@@ -36,7 +36,12 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -92,8 +97,8 @@ fun ActiveWorkoutScreen(
 @Composable
 fun ActiveWorkoutContent(
     uiState: ActiveWorkoutUiState,
-    onRepsChanged: (String, String) -> Unit,
-    onWeightChanged: (String, String) -> Unit,
+    onRepsChanged: (exerciseId: String, reps: String) -> Unit,
+    onWeightChanged: (exerciseId: String, weight: String) -> Unit,
     onCompleteSetClicked: (Exercise) -> Unit,
     onFinishClicked: () -> Unit,
     onNavigateUp: () -> Unit,
@@ -108,7 +113,8 @@ fun ActiveWorkoutContent(
                     Text(
                         text = stringResource(R.string.title_active_workout),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.semantics { heading() }
                     )
                 },
                 navigationIcon = {
@@ -134,7 +140,7 @@ fun ActiveWorkoutContent(
             ) {
                 CircularProgressIndicator()
             }
-        } else if (uiState.isMissing) {
+        } else if (uiState.isMissing || uiState.session == null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -143,7 +149,7 @@ fun ActiveWorkoutContent(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = stringResource(R.string.error_workout_not_found),
+                        text = stringResource(R.string.error_session_not_found),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -181,7 +187,7 @@ fun ActiveWorkoutContent(
                             Text(
                                 text = stringResource(R.string.label_elapsed_time),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
@@ -196,7 +202,7 @@ fun ActiveWorkoutContent(
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                text = uiState.session?.workoutNameSnapshot ?: "",
+                                text = uiState.session.workoutNameSnapshot,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onPrimary,
@@ -210,7 +216,12 @@ fun ActiveWorkoutContent(
                 if (uiState.restTimerRemainingSeconds > 0L) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("active_rest_timer")
+                            .semantics {
+                                stateDescription = uiState.restTimerRemainingSeconds.toString()
+                            },
                         colors = CardDefaults.cardColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer
                         ),
@@ -226,7 +237,7 @@ fun ActiveWorkoutContent(
                                     Text(
                                         text = stringResource(R.string.label_rest_timer),
                                         style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     val minutes = uiState.restTimerRemainingSeconds / 60L
@@ -317,7 +328,7 @@ fun ActiveWorkoutContent(
                                         text = stringResource(R.string.label_done_header),
                                         style = MaterialTheme.typography.labelMedium,
                                         fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.width(44.dp)
+                                        modifier = Modifier.width(48.dp)
                                     )
                                 }
 
@@ -352,7 +363,7 @@ fun ActiveWorkoutContent(
                                         FilledIconButton(
                                             onClick = {},
                                             enabled = false,
-                                            modifier = Modifier.width(44.dp),
+                                            modifier = Modifier.width(48.dp),
                                             colors = IconButtonDefaults.filledIconButtonColors(
                                                 disabledContainerColor = MaterialTheme.colorScheme.primary
                                             )
@@ -388,6 +399,10 @@ fun ActiveWorkoutContent(
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(end = 4.dp)
+                                            .testTag("active_weight_${exercise.id}")
+                                            .semantics {
+                                                contentDescription = currentWeight.ifEmpty { "Weight" }
+                                            }
                                     )
                                     OutlinedTextField(
                                         value = currentReps,
@@ -397,11 +412,15 @@ fun ActiveWorkoutContent(
                                         modifier = Modifier
                                             .weight(1f)
                                             .padding(end = 4.dp)
+                                            .testTag("active_reps_${exercise.id}")
+                                            .semantics {
+                                                contentDescription = currentReps.ifEmpty { "Reps" }
+                                            }
                                     )
                                     FilledIconButton(
                                         onClick = { onCompleteSetClicked(exercise) },
                                         enabled = !uiState.isCompletingSet,
-                                        modifier = Modifier.width(44.dp),
+                                        modifier = Modifier.width(48.dp),
                                         colors = IconButtonDefaults.filledIconButtonColors(
                                             containerColor = MaterialTheme.colorScheme.primaryContainer,
                                             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -597,6 +616,92 @@ private fun ActiveWorkoutContentRestTimerPreview() {
                         instructions = emptyList()
                     )
                 ),
+                completedSets = listOf(
+                    SetLog(
+                        id = 1L,
+                        sessionId = 1L,
+                        exerciseId = "e1",
+                        exerciseNameSnapshot = "Barbell Bench Press",
+                        setNumber = 1,
+                        reps = 10,
+                        weightKg = 50.0,
+                        completedAt = 1100L
+                    )
+                ),
+                inputReps = mapOf("e1" to "10"),
+                inputWeight = mapOf("e1" to "50")
+            ),
+            onRepsChanged = { _, _ -> },
+            onWeightChanged = { _, _ -> },
+            onCompleteSetClicked = {},
+            onFinishClicked = {},
+            onNavigateUp = {},
+            onSkipRestTimer = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Active Workout - Missing")
+@Composable
+private fun ActiveWorkoutMissingPreview() {
+    FitTrackTheme {
+        ActiveWorkoutContent(
+            uiState = ActiveWorkoutUiState(
+                isLoading = false,
+                isMissing = true,
+                session = null
+            ),
+            onRepsChanged = { _, _ -> },
+            onWeightChanged = { _, _ -> },
+            onCompleteSetClicked = {},
+            onFinishClicked = {},
+            onNavigateUp = {},
+            onSkipRestTimer = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Active Workout - Dark")
+@Composable
+private fun ActiveWorkoutDarkPreview() {
+    FitTrackTheme(darkTheme = true) {
+        ActiveWorkoutContent(
+            uiState = ActiveWorkoutUiState(
+                isLoading = false,
+                session = WorkoutSession(
+                    id = 1L,
+                    workoutId = 1L,
+                    workoutNameSnapshot = "Push Day",
+                    startedAt = 1000L,
+                    finishedAt = null,
+                    durationSeconds = 0L,
+                    sets = listOf(
+                        SetLog(
+                            id = 1L,
+                            sessionId = 1L,
+                            exerciseId = "e1",
+                            exerciseNameSnapshot = "Barbell Bench Press",
+                            setNumber = 1,
+                            reps = 10,
+                            weightKg = 50.0,
+                            completedAt = 1100L
+                        )
+                    )
+                ),
+                exercises = listOf(
+                    Exercise(
+                        id = "e1",
+                        name = "Barbell Bench Press",
+                        bodyPart = "chest",
+                        equipment = "barbell",
+                        target = "pectorals",
+                        muscleGroup = "chest",
+                        secondaryMuscles = emptyList(),
+                        instructions = emptyList()
+                    )
+                ),
+                elapsedTimeSeconds = 125L,
+                restTimerRemainingSeconds = 45L,
                 completedSets = listOf(
                     SetLog(
                         id = 1L,
