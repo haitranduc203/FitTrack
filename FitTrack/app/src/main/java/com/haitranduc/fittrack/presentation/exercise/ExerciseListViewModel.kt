@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -67,8 +68,13 @@ class ExerciseListViewModel @Inject constructor(
         selectedEquipment,
         isFavoritesOnly
     ) { query, bodyPart, equipment, favOnly ->
-        Filters(query, bodyPart, equipment, favOnly)
-    }
+        Filters(
+            query = query.trim(),
+            bodyPart = bodyPart?.trim()?.takeIf { it.isNotBlank() },
+            equipment = equipment?.trim()?.takeIf { it.isNotBlank() },
+            isFavoritesOnly = favOnly
+        )
+    }.distinctUntilChanged()
 
     private data class Filters(
         val query: String,
@@ -94,8 +100,9 @@ class ExerciseListViewModel @Inject constructor(
     private val exerciseDataFlow = combine(
         filtersFlow,
         retryTrigger
-    ) { filters, _ -> filters }
-        .flatMapLatest { filters ->
+    ) { filters, retry -> Pair(filters, retry) }
+        .distinctUntilChanged()
+        .flatMapLatest { (filters, _) ->
             flow {
                 emit(
                     ExerciseDataState(
@@ -113,7 +120,7 @@ class ExerciseListViewModel @Inject constructor(
 
                 combine(
                     exerciseRepository.observeExercises(
-                        query = filters.query.trim(),
+                        query = filters.query,
                         bodyPart = filters.bodyPart,
                         equipment = filters.equipment
                     ),
