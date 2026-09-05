@@ -30,6 +30,7 @@ import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.haitranduc.fittrack.core.database.FitTrackDatabase
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -1031,6 +1032,83 @@ class FitTrackNavigationTest {
             }
             composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
             composeTestRule.waitForIdle()
+        } finally {
+            cleanupDatabaseSessions()
+            try {
+                runBlocking {
+                    testDb.openHelper.writableDatabase.execSQL(
+                        "DELETE FROM workouts WHERE name = ?",
+                        arrayOf(uniqueWorkoutName)
+                    )
+                }
+            } catch (_: Exception) {}
+            val navExercises = context.getString(R.string.nav_exercises)
+            if (composeTestRule.onAllNodesWithText(navExercises).fetchSemanticsNodes().isNotEmpty()) {
+                composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
+                composeTestRule.waitForIdle()
+            }
+        }
+    }
+
+    @Test
+    fun test_activeWorkout_invalidRepsAndWeight_showErrorsWithoutPersistingSet() {
+        waitUntilReady()
+
+        val navWorkouts = context.getString(R.string.nav_workouts)
+        val titleWorkouts = context.getString(R.string.title_workouts)
+        val cdCreateWorkout = context.getString(R.string.cd_create_workout)
+        val btnAddExercise = context.getString(R.string.btn_add_exercise)
+        val btnStartWorkout = context.getString(R.string.btn_start_workout)
+        val titleActiveWorkout = context.getString(R.string.title_active_workout)
+        val cdSetDone = context.getString(R.string.cd_set_done)
+        val errorInvalidReps = context.getString(R.string.error_invalid_reps)
+        val errorInvalidWeight = context.getString(R.string.error_invalid_weight)
+        val uniqueWorkoutName = "InvalidInput_" + System.currentTimeMillis()
+        val weightFieldTag = "active_weight_0001"
+        val repsFieldTag = "active_reps_0001"
+
+        try {
+            composeTestRule.onAllNodesWithText(navWorkouts).onLast().performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(titleWorkouts).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithContentDescription(cdCreateWorkout).performClick()
+            composeTestRule.onNode(hasSetTextAction()).performTextReplacement(uniqueWorkoutName)
+            composeTestRule.onNodeWithText(btnAddExercise).performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText("3/4 sit-up").fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText("3/4 sit-up").performClick()
+            composeTestRule.onNodeWithText(btnStartWorkout).performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(titleActiveWorkout).fetchSemanticsNodes().isNotEmpty() &&
+                    composeTestRule.onAllNodesWithTag(weightFieldTag).fetchSemanticsNodes().isNotEmpty() &&
+                    composeTestRule.onAllNodesWithTag(repsFieldTag).fetchSemanticsNodes().isNotEmpty()
+            }
+
+            // Invalid reps must surface inline and must not write a set.
+            composeTestRule.onNodeWithTag(weightFieldTag).performTextReplacement("50")
+            composeTestRule.onNodeWithTag(repsFieldTag).performTextReplacement("0")
+            composeTestRule.onNodeWithContentDescription(cdSetDone).performScrollTo().performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(errorInvalidReps).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(errorInvalidReps).assertIsDisplayed()
+
+            composeTestRule.onNodeWithTag(repsFieldTag).performTextReplacement("10")
+            composeTestRule.onNodeWithTag(weightFieldTag).performTextReplacement("-1")
+            composeTestRule.onNodeWithContentDescription(cdSetDone).performScrollTo().performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(errorInvalidWeight).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(errorInvalidWeight).assertIsDisplayed()
+
+            val persistedSets = runBlocking {
+                val activeSession = testDb.workoutSessionDao().getActiveSession()
+                requireNotNull(activeSession)
+                testDb.setLogDao().observeSetLogsForSession(activeSession.id).first()
+            }
+            assertTrue(persistedSets.isEmpty())
         } finally {
             cleanupDatabaseSessions()
             try {
