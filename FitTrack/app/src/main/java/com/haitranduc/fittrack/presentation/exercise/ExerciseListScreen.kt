@@ -24,6 +24,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -295,13 +296,43 @@ fun ExerciseListContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
                                 text = stringResource(R.string.empty_exercises),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
+                            val emptyDetail = when {
+                                uiState.isFavoritesOnly -> stringResource(R.string.empty_exercises_favorites)
+                                uiState.searchQuery.isNotBlank() || uiState.selectedBodyPart != null || uiState.selectedEquipment != null ->
+                                    stringResource(R.string.empty_exercises_search)
+                                else -> null
+                            }
+                            if (emptyDetail != null) {
+                                Text(
+                                    text = emptyDetail,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
+                            }
+                            if (uiState.searchQuery.isNotBlank() || uiState.selectedBodyPart != null || uiState.selectedEquipment != null || uiState.isFavoritesOnly) {
+                                OutlinedButton(
+                                    onClick = {
+                                        onSearchQueryChange("")
+                                        onBodyPartSelect(null)
+                                        onEquipmentSelect(null)
+                                        if (uiState.isFavoritesOnly) {
+                                            onToggleFavoritesFilter(false)
+                                        }
+                                    }
+                                ) {
+                                    Text(text = stringResource(R.string.action_clear_filters))
+                                }
+                            }
                         }
                     }
                 }
@@ -439,6 +470,50 @@ private fun ExerciseListScreenLoadingPreview() {
             uiState = ExerciseListUiState(
                 isLoading = true,
                 exercises = emptyList()
+            ),
+            onSearchQueryChange = {},
+            onBodyPartSelect = {},
+            onEquipmentSelect = {},
+            onToggleFavoritesFilter = {},
+            onToggleFavorite = {},
+            onClearFavoriteError = {},
+            onExerciseClick = {},
+            onRetry = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Exercise List Screen - Empty Search")
+@Composable
+private fun ExerciseListScreenEmptySearchPreview() {
+    FitTrackTheme {
+        ExerciseListContent(
+            uiState = ExerciseListUiState(
+                isLoading = false,
+                exercises = emptyList(),
+                searchQuery = "nonexistent"
+            ),
+            onSearchQueryChange = {},
+            onBodyPartSelect = {},
+            onEquipmentSelect = {},
+            onToggleFavoritesFilter = {},
+            onToggleFavorite = {},
+            onClearFavoriteError = {},
+            onExerciseClick = {},
+            onRetry = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Exercise List Screen - Empty Favorites")
+@Composable
+private fun ExerciseListScreenEmptyFavoritesPreview() {
+    FitTrackTheme {
+        ExerciseListContent(
+            uiState = ExerciseListUiState(
+                isLoading = false,
+                exercises = emptyList(),
+                isFavoritesOnly = true
             ),
             onSearchQueryChange = {},
             onBodyPartSelect = {},

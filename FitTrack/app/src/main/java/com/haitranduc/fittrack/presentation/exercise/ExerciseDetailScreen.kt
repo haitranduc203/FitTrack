@@ -154,14 +154,31 @@ fun ExerciseDetailContent(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(innerPadding),
+                        .padding(innerPadding)
+                        .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = stringResource(R.string.empty_exercises),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.error_exercise_not_found),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Button(onClick = onNavigateUp) {
+                                Text(text = stringResource(R.string.cd_navigate_up))
+                            }
+                        }
+                    }
                 }
             }
             else -> {
@@ -399,6 +416,23 @@ private fun ExerciseDetailScreenLoadingPreview() {
         ExerciseDetailContent(
             uiState = ExerciseDetailUiState(
                 isLoading = true
+            ),
+            onNavigateUp = {},
+            onToggleFavorite = {},
+            onClearFavoriteError = {},
+            onRetry = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Exercise Detail Screen - Missing")
+@Composable
+private fun ExerciseDetailScreenMissingPreview() {
+    FitTrackTheme {
+        ExerciseDetailContent(
+            uiState = ExerciseDetailUiState(
+                isLoading = false,
+                isMissing = true
             ),
             onNavigateUp = {},
             onToggleFavorite = {},

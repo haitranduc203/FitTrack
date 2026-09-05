@@ -134,7 +134,7 @@ fun ActiveWorkoutContent(
             ) {
                 CircularProgressIndicator()
             }
-        } else if (uiState.isMissing) {
+        } else if (uiState.isMissing || uiState.session == null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -143,7 +143,7 @@ fun ActiveWorkoutContent(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        text = stringResource(R.string.error_workout_not_found),
+                        text = stringResource(R.string.error_session_not_found),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -196,7 +196,7 @@ fun ActiveWorkoutContent(
                             shape = RoundedCornerShape(8.dp)
                         ) {
                             Text(
-                                text = uiState.session?.workoutNameSnapshot ?: "",
+                                text = uiState.session.workoutNameSnapshot,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.onPrimary,
@@ -611,6 +611,26 @@ private fun ActiveWorkoutContentRestTimerPreview() {
                 ),
                 inputReps = mapOf("e1" to "10"),
                 inputWeight = mapOf("e1" to "50")
+            ),
+            onRepsChanged = { _, _ -> },
+            onWeightChanged = { _, _ -> },
+            onCompleteSetClicked = {},
+            onFinishClicked = {},
+            onNavigateUp = {},
+            onSkipRestTimer = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Active Workout - Missing")
+@Composable
+private fun ActiveWorkoutMissingPreview() {
+    FitTrackTheme {
+        ActiveWorkoutContent(
+            uiState = ActiveWorkoutUiState(
+                isLoading = false,
+                isMissing = true,
+                session = null
             ),
             onRepsChanged = { _, _ -> },
             onWeightChanged = { _, _ -> },

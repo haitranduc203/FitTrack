@@ -123,7 +123,7 @@ fun HistoryDetailContent(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             Text(
-                                text = stringResource(R.string.empty_history),
+                                text = stringResource(R.string.error_history_not_found),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )

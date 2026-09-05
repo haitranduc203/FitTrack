@@ -92,8 +92,13 @@ fun ExercisePickerDialog(
             Spacer(modifier = Modifier.height(12.dp))
 
             if (exercises.isEmpty()) {
+                val emptyMsg = if (searchQuery.isNotBlank()) {
+                    stringResource(R.string.empty_exercises_search)
+                } else {
+                    stringResource(R.string.empty_exercises)
+                }
                 Text(
-                    text = stringResource(R.string.empty_exercises),
+                    text = emptyMsg,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 24.dp)
