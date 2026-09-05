@@ -379,3 +379,31 @@ private fun HistoryContentLoadingPreview() {
         )
     }
 }
+
+@Preview(showBackground = true, name = "History Screen - Dark")
+@Composable
+private fun HistoryContentDarkPreview() {
+    FitTrackTheme(darkTheme = true) {
+        HistoryContent(
+            uiState = HistoryUiState(
+                isLoading = false,
+                totalWorkouts = 5L,
+                totalCompletedSets = 20L,
+                totalTrainingTimeSeconds = 7200L,
+                sessions = listOf(
+                    WorkoutSession(
+                        id = 1L,
+                        workoutId = 1L,
+                        workoutNameSnapshot = "Push Day",
+                        startedAt = 1725300000000L,
+                        finishedAt = 1725303600000L,
+                        durationSeconds = 3600L,
+                        sets = emptyList()
+                    )
+                )
+            ),
+            onSessionClick = {},
+            onRetry = {}
+        )
+    }
+}

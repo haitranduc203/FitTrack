@@ -243,7 +243,7 @@ private fun SettingsScreenDefaultPreview() {
 @Preview(showBackground = true, name = "Settings Screen - Dark Selected")
 @Composable
 private fun SettingsScreenDarkPreview() {
-    FitTrackTheme {
+    FitTrackTheme(darkTheme = true) {
         SettingsContent(
             uiState = SettingsUiState(
                 selectedTheme = ThemePreference.DARK

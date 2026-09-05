@@ -409,3 +409,40 @@ private fun WorkoutListContentLoadingPreview() {
         )
     }
 }
+
+@Preview(showBackground = true, name = "Workout List - Dark")
+@Composable
+private fun WorkoutListContentDarkPreview() {
+    FitTrackTheme(darkTheme = true) {
+        WorkoutListContent(
+            uiState = WorkoutListUiState(
+                isLoading = false,
+                workouts = listOf(
+                    Workout(
+                        id = 1L,
+                        name = "Push Day",
+                        createdAt = 1000L,
+                        updatedAt = 1000L,
+                        exercises = listOf(
+                            Exercise(
+                                id = "0025",
+                                name = "barbell bench press",
+                                bodyPart = "chest",
+                                equipment = "barbell",
+                                target = "pectorals",
+                                muscleGroup = "triceps",
+                                secondaryMuscles = listOf("triceps", "shoulders"),
+                                instructions = listOf("Lie on bench", "Press bar")
+                            )
+                        )
+                    )
+                )
+            ),
+            onCreateWorkout = {},
+            onWorkoutClick = {},
+            onDeleteClick = {},
+            onConfirmDelete = {},
+            onDismissDelete = {}
+        )
+    }
+}

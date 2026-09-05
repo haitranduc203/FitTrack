@@ -547,3 +547,36 @@ private fun ExerciseListScreenEmptyFavoritesPreview() {
         )
     }
 }
+
+@Preview(showBackground = true, name = "Exercise List Screen - Dark")
+@Composable
+private fun ExerciseListScreenDarkPreview() {
+    FitTrackTheme(darkTheme = true) {
+        ExerciseListContent(
+            uiState = ExerciseListUiState(
+                isLoading = false,
+                exercises = listOf(
+                    Exercise(
+                        id = "0025",
+                        name = "barbell bench press",
+                        bodyPart = "chest",
+                        equipment = "barbell",
+                        target = "pectorals",
+                        muscleGroup = "triceps",
+                        secondaryMuscles = listOf("triceps", "shoulders"),
+                        instructions = listOf("Lie on bench", "Lower bar", "Press up")
+                    )
+                ),
+                favoriteExerciseIds = setOf("0025")
+            ),
+            onSearchQueryChange = {},
+            onBodyPartSelect = {},
+            onEquipmentSelect = {},
+            onToggleFavoritesFilter = {},
+            onToggleFavorite = {},
+            onClearFavoriteError = {},
+            onExerciseClick = {},
+            onRetry = {}
+        )
+    }
+}

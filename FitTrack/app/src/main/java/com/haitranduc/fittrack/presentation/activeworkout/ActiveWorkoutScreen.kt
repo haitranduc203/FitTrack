@@ -181,7 +181,7 @@ fun ActiveWorkoutContent(
                             Text(
                                 text = stringResource(R.string.label_elapsed_time),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
@@ -226,7 +226,7 @@ fun ActiveWorkoutContent(
                                     Text(
                                         text = stringResource(R.string.label_rest_timer),
                                         style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     val minutes = uiState.restTimerRemainingSeconds / 60L
@@ -631,6 +631,72 @@ private fun ActiveWorkoutMissingPreview() {
                 isLoading = false,
                 isMissing = true,
                 session = null
+            ),
+            onRepsChanged = { _, _ -> },
+            onWeightChanged = { _, _ -> },
+            onCompleteSetClicked = {},
+            onFinishClicked = {},
+            onNavigateUp = {},
+            onSkipRestTimer = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Active Workout - Dark")
+@Composable
+private fun ActiveWorkoutDarkPreview() {
+    FitTrackTheme(darkTheme = true) {
+        ActiveWorkoutContent(
+            uiState = ActiveWorkoutUiState(
+                isLoading = false,
+                session = WorkoutSession(
+                    id = 1L,
+                    workoutId = 1L,
+                    workoutNameSnapshot = "Push Day",
+                    startedAt = 1000L,
+                    finishedAt = null,
+                    durationSeconds = 0L,
+                    sets = listOf(
+                        SetLog(
+                            id = 1L,
+                            sessionId = 1L,
+                            exerciseId = "e1",
+                            exerciseNameSnapshot = "Barbell Bench Press",
+                            setNumber = 1,
+                            reps = 10,
+                            weightKg = 50.0,
+                            completedAt = 1100L
+                        )
+                    )
+                ),
+                exercises = listOf(
+                    Exercise(
+                        id = "e1",
+                        name = "Barbell Bench Press",
+                        bodyPart = "chest",
+                        equipment = "barbell",
+                        target = "pectorals",
+                        muscleGroup = "chest",
+                        secondaryMuscles = emptyList(),
+                        instructions = emptyList()
+                    )
+                ),
+                elapsedTimeSeconds = 125L,
+                restTimerRemainingSeconds = 45L,
+                completedSets = listOf(
+                    SetLog(
+                        id = 1L,
+                        sessionId = 1L,
+                        exerciseId = "e1",
+                        exerciseNameSnapshot = "Barbell Bench Press",
+                        setNumber = 1,
+                        reps = 10,
+                        weightKg = 50.0,
+                        completedAt = 1100L
+                    )
+                ),
+                inputReps = mapOf("e1" to "10"),
+                inputWeight = mapOf("e1" to "50")
             ),
             onRepsChanged = { _, _ -> },
             onWeightChanged = { _, _ -> },

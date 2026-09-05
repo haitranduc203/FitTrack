@@ -563,3 +563,39 @@ private fun WorkoutEditorLoadingPreview() {
         )
     }
 }
+
+@Preview(showBackground = true, name = "Workout Editor - Dark")
+@Composable
+private fun WorkoutEditorDarkPreview() {
+    FitTrackTheme(darkTheme = true) {
+        WorkoutEditorContent(
+            uiState = WorkoutEditorUiState(
+                workoutId = 1L,
+                workoutName = "Push Day",
+                exercises = listOf(
+                    Exercise(
+                        id = "0025",
+                        name = "barbell bench press",
+                        bodyPart = "chest",
+                        equipment = "barbell",
+                        target = "pectorals",
+                        muscleGroup = "triceps",
+                        secondaryMuscles = listOf("triceps", "shoulders"),
+                        instructions = listOf("Lie on bench", "Press bar")
+                    )
+                )
+            ),
+            onNameChanged = {},
+            onAddExerciseClick = {},
+            onRemoveExercise = {},
+            onMoveUp = {},
+            onMoveDown = {},
+            onSaveClick = {},
+            onStartClick = {},
+            onPickerDismiss = {},
+            onPickerQueryChange = {},
+            onPickerExerciseSelect = {},
+            onNavigateUp = {}
+        )
+    }
+}

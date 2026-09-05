@@ -202,7 +202,7 @@ fun HistoryDetailContent(
                                     Text(
                                         text = stringResource(R.string.label_completed_on),
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
                                         text = dateText,
@@ -214,7 +214,7 @@ fun HistoryDetailContent(
                                     Text(
                                         text = stringResource(R.string.label_duration),
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
                                         text = durationText,
@@ -359,6 +359,40 @@ private fun HistoryDetailLoadingPreview() {
             uiState = HistoryDetailUiState(
                 isLoading = true,
                 session = null
+            ),
+            onNavigateUp = {},
+            onRetry = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "History Detail Screen - Dark")
+@Composable
+private fun HistoryDetailDarkPreview() {
+    FitTrackTheme(darkTheme = true) {
+        HistoryDetailContent(
+            uiState = HistoryDetailUiState(
+                isLoading = false,
+                session = WorkoutSession(
+                    id = 1L,
+                    workoutId = 1L,
+                    workoutNameSnapshot = "Push Day",
+                    startedAt = 1725300000000L,
+                    finishedAt = 1725302700000L,
+                    durationSeconds = 2700L,
+                    sets = listOf(
+                        SetLog(
+                            id = 1L,
+                            sessionId = 1L,
+                            exerciseId = "0025",
+                            exerciseNameSnapshot = "barbell bench press",
+                            setNumber = 1,
+                            reps = 10,
+                            weightKg = 60.0,
+                            completedAt = 1725300500000L
+                        )
+                    )
+                )
             ),
             onNavigateUp = {},
             onRetry = {}

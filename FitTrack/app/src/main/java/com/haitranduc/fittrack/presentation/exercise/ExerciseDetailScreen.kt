@@ -263,13 +263,13 @@ fun ExerciseDetailContent(
                                 modifier = Modifier
                                     .size(52.dp)
                                     .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = FitTrackIcons.Exercises,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.size(28.dp)
                                 )
                             }
@@ -284,7 +284,7 @@ fun ExerciseDetailContent(
                             Text(
                                 text = stringResource(R.string.placeholder_media_subtitle),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
@@ -454,6 +454,32 @@ private fun ExerciseDetailScreenMissingPreview() {
             uiState = ExerciseDetailUiState(
                 isLoading = false,
                 isMissing = true
+            ),
+            onNavigateUp = {},
+            onToggleFavorite = {},
+            onClearFavoriteError = {},
+            onRetry = {}
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "Exercise Detail Screen - Dark")
+@Composable
+private fun ExerciseDetailScreenDarkPreview() {
+    FitTrackTheme(darkTheme = true) {
+        ExerciseDetailContent(
+            uiState = ExerciseDetailUiState(
+                exercise = Exercise(
+                    id = "0025",
+                    name = "barbell bench press",
+                    bodyPart = "chest",
+                    equipment = "barbell",
+                    target = "pectorals",
+                    muscleGroup = "triceps",
+                    secondaryMuscles = listOf("triceps", "shoulders"),
+                    instructions = listOf("Lie on bench", "Lower bar", "Press up")
+                ),
+                isFavorite = true
             ),
             onNavigateUp = {},
             onToggleFavorite = {},
