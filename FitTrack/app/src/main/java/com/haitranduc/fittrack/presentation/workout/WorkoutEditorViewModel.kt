@@ -34,12 +34,16 @@ import javax.inject.Inject
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class WorkoutEditorViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle,
     private val workoutRepository: WorkoutRepository,
     private val exerciseRepository: ExerciseRepository,
     private val saveWorkoutUseCase: SaveWorkoutUseCase,
     private val startWorkoutUseCase: StartWorkoutUseCase
 ) : ViewModel() {
+
+    companion object {
+        const val KEY_DRAFT_NAME = "draft_workout_name"
+    }
 
     private val rawWorkoutId: String? = savedStateHandle.get<String>("workoutId")
     private var originalCreatedAt: Long = 0L
@@ -72,14 +76,15 @@ class WorkoutEditorViewModel @Inject constructor(
             initialWorkoutName = ""
             initialExercises = emptyList()
             isInitialized = true
+            val draftName = savedStateHandle.get<String>(KEY_DRAFT_NAME) ?: ""
             _uiState.update {
                 it.copy(
                     isLoading = false,
                     isMissing = false,
                     workoutId = null,
-                    workoutName = "",
+                    workoutName = draftName,
                     exercises = emptyList(),
-                    hasUnsavedChanges = false
+                    hasUnsavedChanges = checkHasChanges(draftName, emptyList())
                 )
             }
         } else {
@@ -100,19 +105,29 @@ class WorkoutEditorViewModel @Inject constructor(
                                         initialWorkoutName = workout.name
                                         initialExercises = workout.exercises
                                         isInitialized = true
+                                        val draftName = savedStateHandle.get<String>(KEY_DRAFT_NAME) ?: workout.name
+                                        _uiState.update {
+                                            it.copy(
+                                                isLoading = false,
+                                                isMissing = false,
+                                                workoutId = workout.id,
+                                                workoutName = draftName,
+                                                exercises = workout.exercises,
+                                                errorMessage = null,
+                                                hasUnsavedChanges = checkHasChanges(draftName, workout.exercises)
+                                            )
+                                        }
+                                    } else {
+                                        _uiState.update { current ->
+                                            current.copy(
+                                                isLoading = false,
+                                                isMissing = false,
+                                                workoutId = workout.id,
+                                                errorMessage = null
+                                            )
+                                        }
                                     }
                                     originalCreatedAt = workout.createdAt
-                                    _uiState.update {
-                                        it.copy(
-                                            isLoading = false,
-                                            isMissing = false,
-                                            workoutId = workout.id,
-                                            workoutName = workout.name,
-                                            exercises = workout.exercises,
-                                            errorMessage = null,
-                                            hasUnsavedChanges = checkHasChanges(workout.name, workout.exercises)
-                                        )
-                                    }
                                 }
                             }
                             is DataResult.Failure -> {
@@ -145,6 +160,7 @@ class WorkoutEditorViewModel @Inject constructor(
     }
 
     fun onNameChanged(name: String) {
+        savedStateHandle[KEY_DRAFT_NAME] = name
         _uiState.update {
             it.copy(
                 workoutName = name,
@@ -265,6 +281,7 @@ class WorkoutEditorViewModel @Inject constructor(
                 )
                 when (val result = saveWorkoutUseCase(workout)) {
                     is SaveWorkoutResult.Success -> {
+                        savedStateHandle.remove<String>(KEY_DRAFT_NAME)
                         _uiState.update { it.copy(hasUnsavedChanges = false) }
                         _events.send(WorkoutEditorEvent.NavigateBack(result.workoutId))
                     }
@@ -340,6 +357,7 @@ class WorkoutEditorViewModel @Inject constructor(
                 )
                 when (val saveResult = saveWorkoutUseCase(workout)) {
                     is SaveWorkoutResult.Success -> {
+                        savedStateHandle.remove<String>(KEY_DRAFT_NAME)
                         _uiState.update { it.copy(hasUnsavedChanges = false) }
                         val workoutId = saveResult.workoutId
                         when (val startResult = startWorkoutUseCase(workoutId)) {

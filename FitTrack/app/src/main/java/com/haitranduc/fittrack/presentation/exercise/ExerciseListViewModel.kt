@@ -1,5 +1,6 @@
 package com.haitranduc.fittrack.presentation.exercise
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.haitranduc.fittrack.R
@@ -32,16 +33,24 @@ sealed interface ExerciseListEvent {
 @HiltViewModel
 class ExerciseListViewModel @Inject constructor(
     private val exerciseRepository: ExerciseRepository,
-    private val favoriteExerciseRepository: FavoriteExerciseRepository
+    private val favoriteExerciseRepository: FavoriteExerciseRepository,
+    private val savedStateHandle: SavedStateHandle = SavedStateHandle()
 ) : ViewModel() {
+
+    companion object {
+        const val KEY_SEARCH_QUERY = "search_query"
+        const val KEY_BODY_PART = "selected_body_part"
+        const val KEY_EQUIPMENT = "selected_equipment"
+        const val KEY_FAVORITES_ONLY = "is_favorites_only"
+    }
 
     private val _events = Channel<ExerciseListEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    private val searchQuery = MutableStateFlow("")
-    private val selectedBodyPart = MutableStateFlow<String?>(null)
-    private val selectedEquipment = MutableStateFlow<String?>(null)
-    private val isFavoritesOnly = MutableStateFlow(false)
+    private val searchQuery = savedStateHandle.getStateFlow(KEY_SEARCH_QUERY, "")
+    private val selectedBodyPart = savedStateHandle.getStateFlow<String?>(KEY_BODY_PART, null)
+    private val selectedEquipment = savedStateHandle.getStateFlow<String?>(KEY_EQUIPMENT, null)
+    private val isFavoritesOnly = savedStateHandle.getStateFlow(KEY_FAVORITES_ONLY, false)
     private val pendingFavoriteIds = MutableStateFlow<Set<String>>(emptySet())
     private val favoriteErrorMessage = MutableStateFlow<UiText?>(null)
     private val retryTrigger = MutableStateFlow(0)
@@ -153,19 +162,19 @@ class ExerciseListViewModel @Inject constructor(
     }
 
     fun onSearchQueryChanged(query: String) {
-        searchQuery.value = query
+        savedStateHandle[KEY_SEARCH_QUERY] = query
     }
 
     fun onBodyPartSelected(bodyPart: String?) {
-        selectedBodyPart.value = bodyPart
+        savedStateHandle[KEY_BODY_PART] = bodyPart
     }
 
     fun onEquipmentSelected(equipment: String?) {
-        selectedEquipment.value = equipment
+        savedStateHandle[KEY_EQUIPMENT] = equipment
     }
 
     fun onFavoritesFilterToggled(enabled: Boolean) {
-        isFavoritesOnly.value = enabled
+        savedStateHandle[KEY_FAVORITES_ONLY] = enabled
     }
 
     fun onToggleFavorite(exerciseId: String) {

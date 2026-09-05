@@ -1,5 +1,6 @@
 package com.haitranduc.fittrack.presentation.exercise
 
+import androidx.lifecycle.SavedStateHandle
 import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.Exercise
 import com.haitranduc.fittrack.domain.repository.DataError
@@ -360,6 +361,31 @@ class ExerciseListViewModelTest {
         assertFalse(state.isLoading)
         assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
         assertEquals(4, state.exercises.size)
+
+        collectJob.cancel()
+    }
+
+    @Test
+    fun init_restoresFiltersFromSavedStateHandle() = runTest(testDispatcher) {
+        val handle = SavedStateHandle(
+            mapOf(
+                ExerciseListViewModel.KEY_SEARCH_QUERY to "Bench",
+                ExerciseListViewModel.KEY_BODY_PART to "chest",
+                ExerciseListViewModel.KEY_EQUIPMENT to "barbell",
+                ExerciseListViewModel.KEY_FAVORITES_ONLY to true
+            )
+        )
+        val viewModel = ExerciseListViewModel(repository, favoriteRepository, handle)
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertEquals("Bench", state.searchQuery)
+        assertEquals("chest", state.selectedBodyPart)
+        assertEquals("barbell", state.selectedEquipment)
+        assertTrue(state.isFavoritesOnly)
 
         collectJob.cancel()
     }

@@ -430,4 +430,20 @@ class ActiveWorkoutViewModelTest {
         assertNull(vm.uiState.value.restTimerEndsAtMillis)
         assertNull(handle.get<Long>("rest_timer_ends_at_millis"))
     }
+
+    @Test
+    fun viewModelInit_withSavedInputValues_restoresRepsAndWeightInputs() = runTest {
+        val handle = SavedStateHandle(
+            mapOf(
+                "sessionId" to 10L,
+                "input_reps_e1" to "12",
+                "input_weight_e1" to "65.5"
+            )
+        )
+        val vm = createViewModel(sessionId = 10L, handle = handle)
+        advanceUntilIdle()
+
+        assertEquals("12", vm.uiState.value.inputReps["e1"])
+        assertEquals("65.5", vm.uiState.value.inputWeight["e1"])
+    }
 }

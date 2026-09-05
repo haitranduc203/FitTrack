@@ -432,4 +432,22 @@ class WorkoutEditorViewModelTest {
 
         assertFalse(viewModel.uiState.value.hasUnsavedChanges)
     }
+
+    @Test
+    fun init_restoresDraftNameFromSavedStateHandle() = runTest {
+        val handle = SavedStateHandle().apply {
+            set(WorkoutEditorViewModel.KEY_DRAFT_NAME, "Restored Draft")
+        }
+        val viewModel = WorkoutEditorViewModel(
+            savedStateHandle = handle,
+            workoutRepository = workoutRepository,
+            exerciseRepository = exerciseRepository,
+            saveWorkoutUseCase = saveWorkoutUseCase,
+            startWorkoutUseCase = startWorkoutUseCase
+        )
+        advanceUntilIdle()
+
+        assertEquals("Restored Draft", viewModel.uiState.value.workoutName)
+        assertTrue(viewModel.uiState.value.hasUnsavedChanges)
+    }
 }

@@ -105,7 +105,19 @@ class ActiveWorkoutViewModel @Inject constructor(
             val workoutResult = workoutRepository.observeWorkout(workoutId).first()
             if (workoutResult is DataResult.Success) {
                 val exercises = workoutResult.data?.exercises ?: emptyList()
-                _uiState.update { it.copy(exercises = exercises) }
+                val restoredReps = exercises.mapNotNull { ex ->
+                    savedStateHandle.get<String>("input_reps_${ex.id}")?.let { ex.id to it }
+                }.toMap()
+                val restoredWeights = exercises.mapNotNull { ex ->
+                    savedStateHandle.get<String>("input_weight_${ex.id}")?.let { ex.id to it }
+                }.toMap()
+                _uiState.update {
+                    it.copy(
+                        exercises = exercises,
+                        inputReps = it.inputReps + restoredReps,
+                        inputWeight = it.inputWeight + restoredWeights
+                    )
+                }
             }
         }
     }
@@ -153,12 +165,14 @@ class ActiveWorkoutViewModel @Inject constructor(
     }
 
     fun onRepsChanged(exerciseId: String, reps: String) {
+        savedStateHandle["input_reps_$exerciseId"] = reps
         _uiState.update {
             it.copy(inputReps = it.inputReps + (exerciseId to reps))
         }
     }
 
     fun onWeightChanged(exerciseId: String, weight: String) {
+        savedStateHandle["input_weight_$exerciseId"] = weight
         _uiState.update {
             it.copy(inputWeight = it.inputWeight + (exerciseId to weight))
         }
@@ -196,6 +210,8 @@ class ActiveWorkoutViewModel @Inject constructor(
             try {
                 when (val res = completeSetUseCase(sid, exercise.id, exercise.name, nextSetNumber, reps, weight)) {
                     is CompleteSetResult.Success -> {
+                        savedStateHandle.remove<String>("input_reps_${exercise.id}")
+                        savedStateHandle.remove<String>("input_weight_${exercise.id}")
                         startRestTimer()
                         _uiState.update {
                             it.copy(
