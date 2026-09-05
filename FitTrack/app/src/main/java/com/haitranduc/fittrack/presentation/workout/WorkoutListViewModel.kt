@@ -84,24 +84,30 @@ class WorkoutListViewModel @Inject constructor(
 
         _uiState.update { it.copy(isDeleting = true) }
         viewModelScope.launch {
-            when (val result = workoutRepository.delete(toDelete.id)) {
-                is DataResult.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            workoutToDelete = null,
-                            isDeleting = false,
-                            errorMessage = null
-                        )
+            try {
+                when (val result = workoutRepository.delete(toDelete.id)) {
+                    is DataResult.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                workoutToDelete = null,
+                                errorMessage = null
+                            )
+                        }
+                    }
+                    is DataResult.Failure -> {
+                        _uiState.update {
+                            it.copy(
+                                errorMessage = result.error.toUiText()
+                            )
+                        }
                     }
                 }
-                is DataResult.Failure -> {
-                    _uiState.update {
-                        it.copy(
-                            isDeleting = false,
-                            errorMessage = result.error.toUiText()
-                        )
-                    }
-                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: java.lang.Error) {
+                throw e
+            } finally {
+                _uiState.update { it.copy(isDeleting = false) }
             }
         }
     }

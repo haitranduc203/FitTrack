@@ -315,4 +315,26 @@ class ExerciseListViewModelTest {
 
         collectJob.cancel()
     }
+
+    @Test
+    fun retryFailure_retainsPreviouslyLoadedExercises() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        assertEquals(4, viewModel.uiState.value.exercises.size)
+
+        repository.returnDataFailure = true
+        viewModel.onRetry()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
+        assertEquals(4, state.exercises.size)
+
+        collectJob.cancel()
+    }
 }

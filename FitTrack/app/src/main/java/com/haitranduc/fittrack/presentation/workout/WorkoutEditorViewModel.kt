@@ -215,39 +215,46 @@ class WorkoutEditorViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = true, errorMessage = null) }
 
         viewModelScope.launch {
-            val workout = Workout(
-                id = currentState.workoutId ?: 0L,
-                name = currentState.workoutName,
-                createdAt = originalCreatedAt,
-                updatedAt = 0L,
-                exercises = currentState.exercises
-            )
-            when (val result = saveWorkoutUseCase(workout)) {
-                is SaveWorkoutResult.Success -> {
-                    _uiState.update { it.copy(isSaving = false) }
-                    _events.send(WorkoutEditorEvent.NavigateBack(result.workoutId))
-                }
-                is SaveWorkoutResult.InvalidName -> {
-                    val resId = when (result.reason) {
-                        NameResult.Blank -> R.string.error_workout_name_blank
-                        NameResult.TooLong -> R.string.error_workout_name_too_long
-                        is NameResult.Valid -> null
+            try {
+                val workout = Workout(
+                    id = currentState.workoutId ?: 0L,
+                    name = currentState.workoutName,
+                    createdAt = originalCreatedAt,
+                    updatedAt = 0L,
+                    exercises = currentState.exercises
+                )
+                when (val result = saveWorkoutUseCase(workout)) {
+                    is SaveWorkoutResult.Success -> {
+                        _events.send(WorkoutEditorEvent.NavigateBack(result.workoutId))
                     }
-                    _uiState.update { it.copy(isSaving = false, nameErrorRes = resId) }
-                }
-                is SaveWorkoutResult.InvalidExercises -> {
-                    val resId = when (result.reason) {
-                        ExerciseListResult.Empty -> R.string.error_workout_exercises_empty
-                        is ExerciseListResult.Duplicate -> R.string.error_workout_exercise_duplicate
-                        ExerciseListResult.Valid -> null
+                    is SaveWorkoutResult.InvalidName -> {
+                        val resId = when (result.reason) {
+                            NameResult.Blank -> R.string.error_workout_name_blank
+                            NameResult.TooLong -> R.string.error_workout_name_too_long
+                            is NameResult.Valid -> null
+                        }
+                        _uiState.update { it.copy(nameErrorRes = resId) }
                     }
-                    _uiState.update { it.copy(isSaving = false, exerciseErrorRes = resId) }
-                }
-                is SaveWorkoutResult.RepositoryError -> {
-                    _uiState.update {
-                        it.copy(isSaving = false, errorMessage = result.error.toUiText())
+                    is SaveWorkoutResult.InvalidExercises -> {
+                        val resId = when (result.reason) {
+                            ExerciseListResult.Empty -> R.string.error_workout_exercises_empty
+                            is ExerciseListResult.Duplicate -> R.string.error_workout_exercise_duplicate
+                            ExerciseListResult.Valid -> null
+                        }
+                        _uiState.update { it.copy(exerciseErrorRes = resId) }
+                    }
+                    is SaveWorkoutResult.RepositoryError -> {
+                        _uiState.update {
+                            it.copy(errorMessage = result.error.toUiText())
+                        }
                     }
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: java.lang.Error) {
+                throw e
+            } finally {
+                _uiState.update { it.copy(isSaving = false) }
             }
         }
     }
@@ -280,63 +287,69 @@ class WorkoutEditorViewModel @Inject constructor(
         _uiState.update { it.copy(isSaving = true, errorMessage = null) }
 
         viewModelScope.launch {
-            val workout = Workout(
-                id = currentState.workoutId ?: 0L,
-                name = currentState.workoutName,
-                createdAt = originalCreatedAt,
-                updatedAt = 0L,
-                exercises = currentState.exercises
-            )
-            when (val saveResult = saveWorkoutUseCase(workout)) {
-                is SaveWorkoutResult.Success -> {
-                    val workoutId = saveResult.workoutId
-                    when (val startResult = startWorkoutUseCase(workoutId)) {
-                        is StartWorkoutResult.Success -> {
-                            _uiState.update { it.copy(isSaving = false) }
-                            _events.send(WorkoutEditorEvent.NavigateToActiveWorkout(startResult.sessionId))
-                        }
-                        is StartWorkoutResult.ActiveSessionExists -> {
-                            _uiState.update { it.copy(isSaving = false, errorMessage = null) }
-                            _events.send(WorkoutEditorEvent.NavigateToActiveWorkout(startResult.sessionId))
-                        }
-                        StartWorkoutResult.WorkoutNotFound -> {
-                            _uiState.update {
-                                it.copy(isSaving = false, errorMessage = UiText.StringResource(R.string.error_workout_not_found))
+            try {
+                val workout = Workout(
+                    id = currentState.workoutId ?: 0L,
+                    name = currentState.workoutName,
+                    createdAt = originalCreatedAt,
+                    updatedAt = 0L,
+                    exercises = currentState.exercises
+                )
+                when (val saveResult = saveWorkoutUseCase(workout)) {
+                    is SaveWorkoutResult.Success -> {
+                        val workoutId = saveResult.workoutId
+                        when (val startResult = startWorkoutUseCase(workoutId)) {
+                            is StartWorkoutResult.Success -> {
+                                _events.send(WorkoutEditorEvent.NavigateToActiveWorkout(startResult.sessionId))
+                            }
+                            is StartWorkoutResult.ActiveSessionExists -> {
+                                _events.send(WorkoutEditorEvent.NavigateToActiveWorkout(startResult.sessionId))
+                            }
+                            StartWorkoutResult.WorkoutNotFound -> {
+                                _uiState.update {
+                                    it.copy(errorMessage = UiText.StringResource(R.string.error_workout_not_found))
+                                }
+                            }
+                            StartWorkoutResult.EmptyWorkout -> {
+                                _uiState.update {
+                                    it.copy(exerciseErrorRes = R.string.error_workout_exercises_empty)
+                                }
+                            }
+                            is StartWorkoutResult.Failure -> {
+                                _uiState.update {
+                                    it.copy(errorMessage = startResult.error.toUiText())
+                                }
                             }
                         }
-                        StartWorkoutResult.EmptyWorkout -> {
-                            _uiState.update {
-                                it.copy(isSaving = false, exerciseErrorRes = R.string.error_workout_exercises_empty)
-                            }
+                    }
+                    is SaveWorkoutResult.InvalidName -> {
+                        val resId = when (saveResult.reason) {
+                            NameResult.Blank -> R.string.error_workout_name_blank
+                            NameResult.TooLong -> R.string.error_workout_name_too_long
+                            is NameResult.Valid -> null
                         }
-                        is StartWorkoutResult.Failure -> {
-                            _uiState.update {
-                                it.copy(isSaving = false, errorMessage = startResult.error.toUiText())
-                            }
+                        _uiState.update { it.copy(nameErrorRes = resId) }
+                    }
+                    is SaveWorkoutResult.InvalidExercises -> {
+                        val resId = when (saveResult.reason) {
+                            ExerciseListResult.Empty -> R.string.error_workout_exercises_empty
+                            is ExerciseListResult.Duplicate -> R.string.error_workout_exercise_duplicate
+                            ExerciseListResult.Valid -> null
+                        }
+                        _uiState.update { it.copy(exerciseErrorRes = resId) }
+                    }
+                    is SaveWorkoutResult.RepositoryError -> {
+                        _uiState.update {
+                            it.copy(errorMessage = saveResult.error.toUiText())
                         }
                     }
                 }
-                is SaveWorkoutResult.InvalidName -> {
-                    val resId = when (saveResult.reason) {
-                        NameResult.Blank -> R.string.error_workout_name_blank
-                        NameResult.TooLong -> R.string.error_workout_name_too_long
-                        is NameResult.Valid -> null
-                    }
-                    _uiState.update { it.copy(isSaving = false, nameErrorRes = resId) }
-                }
-                is SaveWorkoutResult.InvalidExercises -> {
-                    val resId = when (saveResult.reason) {
-                        ExerciseListResult.Empty -> R.string.error_workout_exercises_empty
-                        is ExerciseListResult.Duplicate -> R.string.error_workout_exercise_duplicate
-                        ExerciseListResult.Valid -> null
-                    }
-                    _uiState.update { it.copy(isSaving = false, exerciseErrorRes = resId) }
-                }
-                is SaveWorkoutResult.RepositoryError -> {
-                    _uiState.update {
-                        it.copy(isSaving = false, errorMessage = saveResult.error.toUiText())
-                    }
-                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: java.lang.Error) {
+                throw e
+            } finally {
+                _uiState.update { it.copy(isSaving = false) }
             }
         }
     }

@@ -181,6 +181,25 @@ class WorkoutListViewModelTest {
         assertTrue(viewModel.uiState.value.workouts.isEmpty())
     }
 
+    @Test
+    fun observationFailure_retainsPreviouslyLoadedWorkouts() = runTest {
+        workoutRepository.setWorkouts(listOf(sampleWorkout1))
+        val viewModel = WorkoutListViewModel(workoutRepository)
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.uiState.value.workouts.size)
+
+        workoutRepository.observeError = DataError.Database(RuntimeException("Intermittent failure"))
+        viewModel.retry()
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertEquals(UiText.StringResource(R.string.error_database), state.errorMessage)
+        assertEquals(1, state.workouts.size)
+        assertEquals("Push Day", state.workouts[0].name)
+    }
+
     private suspend fun kotlinx.coroutines.flow.Flow<com.haitranduc.fittrack.domain.repository.DataResult<List<Workout>>>.firstSuccessData(): List<Workout> {
         val result = this.first()
         return (result as com.haitranduc.fittrack.domain.repository.DataResult.Success<List<Workout>>).data
