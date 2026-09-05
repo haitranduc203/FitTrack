@@ -6,6 +6,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isNotSelected
 import androidx.compose.ui.test.isSelectable
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -53,26 +54,60 @@ class FitTrackNavigationTest {
         val navExercises = context.getString(R.string.nav_exercises)
         val cdNavigateUp = context.getString(R.string.cd_navigate_up)
         val filterAll = context.getString(R.string.filter_all)
+        val filterFavorites = context.getString(R.string.filter_favorites)
 
-        val backNodes = composeTestRule.onAllNodesWithContentDescription(cdNavigateUp).fetchSemanticsNodes()
-        if (backNodes.isNotEmpty()) {
-            composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
+        // Pop back up to 3 times if nested
+        repeat(3) {
+            val backNodes = composeTestRule.onAllNodesWithContentDescription(cdNavigateUp).fetchSemanticsNodes()
+            if (backNodes.isNotEmpty()) {
+                composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
+                composeTestRule.waitForIdle()
+            }
         }
 
-        val navNodes = composeTestRule.onAllNodesWithText(navExercises).fetchSemanticsNodes()
-        if (navNodes.isNotEmpty()) {
-            composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
+        val titleNodes = composeTestRule.onAllNodesWithText(titleExercises).fetchSemanticsNodes()
+        if (titleNodes.isEmpty()) {
+            val navNodes = composeTestRule.onAllNodesWithText(navExercises).fetchSemanticsNodes()
+            if (navNodes.isNotEmpty()) {
+                composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
+            }
         }
 
         composeTestRule.waitUntil(timeoutMillis = 20_000) {
             composeTestRule.onAllNodesWithText(titleExercises).fetchSemanticsNodes().isNotEmpty()
         }
 
-        // Reset filter chips to "All" ONLY if not already selected
-        val unselectedAllChips = composeTestRule.onAllNodes(hasText(filterAll) and isNotSelected()).fetchSemanticsNodes()
-        if (unselectedAllChips.isNotEmpty()) {
-            composeTestRule.onAllNodes(hasText(filterAll) and isNotSelected()).onFirst().performClick()
+        // Clear search input if present and not already empty
+        val searchNodes = composeTestRule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes()
+        if (searchNodes.isNotEmpty()) {
+            val text = searchNodes[0].config.getOrElse(androidx.compose.ui.semantics.SemanticsProperties.EditableText) {
+                androidx.compose.ui.text.AnnotatedString("")
+            }.text
+            if (text.isNotEmpty()) {
+                composeTestRule.onNode(hasSetTextAction()).performTextClearance()
+                composeTestRule.waitForIdle()
+            }
+        }
+
+        // Deselect favorites filter if selected
+        val favSelected = composeTestRule.onAllNodes(hasText(filterFavorites) and isSelected()).fetchSemanticsNodes()
+        if (favSelected.isNotEmpty()) {
+            composeTestRule.onAllNodes(hasText(filterFavorites) and isSelected()).onFirst().performClick()
             composeTestRule.waitForIdle()
+        }
+
+        // Reset all unselected "All" filter chips (both Body Part and Equipment)
+        repeat(2) {
+            val unselectedAllChips = composeTestRule.onAllNodes(hasText(filterAll) and isNotSelected()).fetchSemanticsNodes()
+            if (unselectedAllChips.isNotEmpty()) {
+                composeTestRule.onAllNodes(hasText(filterAll) and isNotSelected()).onFirst().performClick()
+                composeTestRule.waitForIdle()
+            }
+        }
+
+        // Wait until database seed is loaded and initial exercise item is displayed
+        composeTestRule.waitUntil(timeoutMillis = 20_000) {
+            composeTestRule.onAllNodesWithText("3/4 sit-up").fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.waitForIdle()
     }
@@ -105,7 +140,7 @@ class FitTrackNavigationTest {
         composeTestRule.onAllNodesWithText(navSettings).onLast().performClick()
         composeTestRule.onAllNodesWithText(titleSettings).onFirst().assertIsDisplayed()
 
-        // 5. Return to Exercises via bottom bar
+        // 5. Navigate back to Exercises
         composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
         composeTestRule.onAllNodesWithText(titleExercises).onFirst().assertIsDisplayed()
     }
@@ -159,7 +194,8 @@ class FitTrackNavigationTest {
         composeTestRule.onNodeWithContentDescription(cdCreateWorkout).performClick()
 
         // 3. Set name and add exercise
-        composeTestRule.onNode(hasSetTextAction()).performTextReplacement("Push Day")
+        composeTestRule.onNode(hasSetTextAction()).performTextClearance()
+        composeTestRule.onNode(hasSetTextAction()).performTextInput("Push Day")
         composeTestRule.onNodeWithText(btnAddExercise).performClick()
 
         composeTestRule.waitUntil(timeoutMillis = 15_000) {
@@ -285,24 +321,30 @@ class FitTrackNavigationTest {
     fun test_searchNonMatchingQuery_showsEmptyState() {
         waitUntilReady()
 
-        // Wait until initial exercise list is populated before searching
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
-            composeTestRule.onAllNodesWithText("3/4 sit-up").fetchSemanticsNodes().isNotEmpty()
-        }
-
         val emptyExercisesText = context.getString(R.string.empty_exercises)
 
         // Enter non-matching search query
         composeTestRule.onNode(hasSetTextAction()).performTextReplacement("XYZNonExistentExercise123")
 
-        // Verify empty state is displayed
+        // Verify empty state is displayed, re-applying if an in-flight query reset the field
         composeTestRule.waitUntil(timeoutMillis = 15_000) {
-            composeTestRule.onAllNodesWithText(emptyExercisesText).fetchSemanticsNodes().isNotEmpty()
+            val hasEmpty = composeTestRule.onAllNodesWithText(emptyExercisesText).fetchSemanticsNodes().isNotEmpty()
+            if (!hasEmpty) {
+                val currentText = composeTestRule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().firstOrNull()
+                    ?.config?.getOrElse(androidx.compose.ui.semantics.SemanticsProperties.EditableText) {
+                        androidx.compose.ui.text.AnnotatedString("")
+                    }?.text
+                if (currentText != "XYZNonExistentExercise123") {
+                    composeTestRule.onNode(hasSetTextAction()).performTextReplacement("XYZNonExistentExercise123")
+                }
+            }
+            hasEmpty
         }
         composeTestRule.onNodeWithText(emptyExercisesText).assertIsDisplayed()
 
         // Reset search query
         composeTestRule.onNode(hasSetTextAction()).performTextReplacement("")
+        composeTestRule.waitForIdle()
     }
 
     @Test
@@ -313,11 +355,24 @@ class FitTrackNavigationTest {
 
         // Click Chest filter chip (which is selectable)
         composeTestRule.onNode(hasText(filterChest) and isSelectable()).performClick()
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
+            composeTestRule.onAllNodesWithText("archer push up").fetchSemanticsNodes().isNotEmpty()
+        }
 
         // Bench press must be displayed when searched
         composeTestRule.onNode(hasSetTextAction()).performTextReplacement("bench press")
         composeTestRule.waitUntil(timeoutMillis = 15_000) {
-            composeTestRule.onAllNodesWithText("barbell bench press").fetchSemanticsNodes().isNotEmpty()
+            val hasItem = composeTestRule.onAllNodesWithText("barbell bench press").fetchSemanticsNodes().isNotEmpty()
+            if (!hasItem) {
+                val currentText = composeTestRule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().firstOrNull()
+                    ?.config?.getOrElse(androidx.compose.ui.semantics.SemanticsProperties.EditableText) {
+                        androidx.compose.ui.text.AnnotatedString("")
+                    }?.text
+                if (currentText != "bench press") {
+                    composeTestRule.onNode(hasSetTextAction()).performTextReplacement("bench press")
+                }
+            }
+            hasItem
         }
         composeTestRule.onAllNodesWithText("barbell bench press").onFirst().assertIsDisplayed()
 
@@ -330,7 +385,7 @@ class FitTrackNavigationTest {
         if (unselectedAll.isNotEmpty()) {
             composeTestRule.onAllNodes(hasText(filterAll) and isNotSelected()).onFirst().performClick()
         }
-        composeTestRule.onNode(hasSetTextAction()).performTextClearance()
+        composeTestRule.onNode(hasSetTextAction()).performTextReplacement("")
         composeTestRule.waitForIdle()
     }
 
@@ -393,7 +448,8 @@ class FitTrackNavigationTest {
         composeTestRule.onNode(hasText(filterBodyweight) and isSelectable()).performClick()
 
         // Search "archer"
-        composeTestRule.onNode(hasSetTextAction()).performTextReplacement("archer")
+        composeTestRule.onNode(hasSetTextAction()).performTextClearance()
+        composeTestRule.onNode(hasSetTextAction()).performTextInput("archer")
 
         composeTestRule.waitUntil(timeoutMillis = 15_000) {
             composeTestRule.onAllNodesWithText("archer push up").fetchSemanticsNodes().isNotEmpty()
@@ -401,7 +457,7 @@ class FitTrackNavigationTest {
         composeTestRule.onNodeWithText("archer push up").assertIsDisplayed()
 
         // Clean up
-        composeTestRule.onNode(hasSetTextAction()).performTextReplacement("")
+        composeTestRule.onNode(hasSetTextAction()).performTextClearance()
         val allChips = composeTestRule.onAllNodesWithText(filterAll).fetchSemanticsNodes()
         if (allChips.isNotEmpty()) {
             composeTestRule.onAllNodesWithText(filterAll).onFirst().performClick()
@@ -502,6 +558,11 @@ class FitTrackNavigationTest {
         }
         composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
         composeTestRule.waitForIdle()
+
+        // Return to Exercises tab
+        val navExercises = context.getString(R.string.nav_exercises)
+        composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
+        composeTestRule.waitForIdle()
     }
 
     @Test
@@ -538,6 +599,11 @@ class FitTrackNavigationTest {
 
         // 6. Reset to System Default for test hygiene
         composeTestRule.onNodeWithText(themeSystem).performClick()
+        composeTestRule.waitForIdle()
+
+        // Return to Exercises tab
+        val navExercises = context.getString(R.string.nav_exercises)
+        composeTestRule.onAllNodesWithText(navExercises).onLast().performClick()
         composeTestRule.waitForIdle()
     }
 }
