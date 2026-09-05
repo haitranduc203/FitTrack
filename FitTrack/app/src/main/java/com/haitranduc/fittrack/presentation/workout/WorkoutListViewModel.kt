@@ -49,6 +49,10 @@ class WorkoutListViewModel @Inject constructor(
         observeSavedState()
     }
 
+    fun onWorkoutSavedResult() {
+        _events.trySend(WorkoutListEvent.ShowSnackbar(UiText.StringResource(R.string.msg_workout_saved)))
+    }
+
     private fun observeSavedState() {
         viewModelScope.launch {
             savedStateHandle.getStateFlow(KEY_WORKOUT_SAVED, false).collect { wasSaved ->
@@ -59,6 +63,7 @@ class WorkoutListViewModel @Inject constructor(
             }
         }
     }
+
 
     private fun observeWorkouts() {
         viewModelScope.launch {

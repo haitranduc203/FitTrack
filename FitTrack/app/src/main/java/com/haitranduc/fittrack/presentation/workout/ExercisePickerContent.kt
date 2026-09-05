@@ -35,6 +35,10 @@ import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.core.designsystem.FitTrackIcons
 import com.haitranduc.fittrack.domain.model.Exercise
 
+import android.content.res.Configuration
+import androidx.compose.ui.tooling.preview.Preview
+import com.haitranduc.fittrack.core.designsystem.theme.FitTrackTheme
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExercisePickerDialog(
@@ -55,113 +59,169 @@ fun ExercisePickerDialog(
         sheetState = sheetState,
         modifier = modifier
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.85f)
-                .padding(horizontal = 16.dp)
+        ExercisePickerSheetContent(
+            exercises = exercises,
+            searchQuery = searchQuery,
+            onSearchQueryChange = onSearchQueryChange,
+            onExerciseSelect = onExerciseSelect,
+            onDismiss = onDismiss
+        )
+    }
+}
+
+@Composable
+fun ExercisePickerSheetContent(
+    exercises: List<Exercise>,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    onExerciseSelect: (Exercise) -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.85f)
+            .padding(horizontal = 16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.title_exercise_picker),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.semantics { heading() }
-                )
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        imageVector = FitTrackIcons.Close,
-                        contentDescription = stringResource(R.string.cd_navigate_up)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = onSearchQueryChange,
-                label = { Text(text = stringResource(R.string.label_search_exercises)) },
-                placeholder = { Text(text = stringResource(R.string.hint_search_exercises)) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                singleLine = true
+            Text(
+                text = stringResource(R.string.title_exercise_picker),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.semantics { heading() }
             )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            if (exercises.isEmpty()) {
-                val emptyMsg = if (searchQuery.isNotBlank()) {
-                    stringResource(R.string.empty_exercises_search)
-                } else {
-                    stringResource(R.string.empty_exercises)
-                }
-                Text(
-                    text = emptyMsg,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 24.dp)
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = FitTrackIcons.Close,
+                    contentDescription = stringResource(R.string.cd_navigate_up)
                 )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChange,
+            label = { Text(text = stringResource(R.string.label_search_exercises)) },
+            placeholder = { Text(text = stringResource(R.string.hint_search_exercises)) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        if (exercises.isEmpty()) {
+            val emptyMsg = if (searchQuery.isNotBlank()) {
+                stringResource(R.string.empty_exercises_search)
             } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(
-                        items = exercises,
-                        key = { it.id },
-                        contentType = { "picker_exercise_item" }
-                    ) { exercise ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onExerciseSelect(exercise) },
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface
-                            ),
-                            shape = RoundedCornerShape(10.dp),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text(
-                                    text = exercise.name,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.primaryContainer,
-                                        shape = RoundedCornerShape(4.dp)
-                                    ) {
-                                        Text(
-                                            text = exercise.bodyPart,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                    Surface(
-                                        color = MaterialTheme.colorScheme.secondaryContainer,
-                                        shape = RoundedCornerShape(4.dp)
-                                    ) {
-                                        Text(
-                                            text = exercise.equipment,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
+                stringResource(R.string.empty_exercises)
+            }
+            Text(
+                text = emptyMsg,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 24.dp)
+            )
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(
+                    items = exercises,
+                    key = { it.id },
+                    contentType = { "picker_exercise_item" }
+                ) { exercise ->
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onExerciseSelect(exercise) },
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = exercise.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = exercise.bodyPart,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                                Surface(
+                                    color = MaterialTheme.colorScheme.secondaryContainer,
+                                    shape = RoundedCornerShape(4.dp)
+                                ) {
+                                    Text(
+                                        text = exercise.equipment,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Exercise Picker - Light")
+@Composable
+private fun ExercisePickerPreview() {
+    FitTrackTheme(darkTheme = false) {
+        Surface {
+            ExercisePickerSheetContent(
+                exercises = listOf(
+                    Exercise("1", "Barbell Bench Press", "chest", "barbell", "pectorals", "chest", emptyList(), emptyList()),
+                    Exercise("2", "Squat", "legs", "barbell", "quadriceps", "legs", emptyList(), emptyList())
+                ),
+                searchQuery = "",
+                onSearchQueryChange = {},
+                onExerciseSelect = {},
+                onDismiss = {}
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Exercise Picker - Dark", uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Composable
+private fun ExercisePickerDarkPreview() {
+    FitTrackTheme(darkTheme = true) {
+        Surface {
+            ExercisePickerSheetContent(
+                exercises = listOf(
+                    Exercise("1", "Barbell Bench Press", "chest", "barbell", "pectorals", "chest", emptyList(), emptyList()),
+                    Exercise("2", "Squat", "legs", "barbell", "quadriceps", "legs", emptyList(), emptyList())
+                ),
+                searchQuery = "",
+                onSearchQueryChange = {},
+                onExerciseSelect = {},
+                onDismiss = {}
+            )
         }
     }
 }

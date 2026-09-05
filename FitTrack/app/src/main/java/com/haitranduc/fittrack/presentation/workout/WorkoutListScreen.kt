@@ -56,12 +56,21 @@ import com.haitranduc.fittrack.domain.model.Workout
 fun WorkoutListScreen(
     onCreateWorkout: () -> Unit,
     onWorkoutClick: (Long) -> Unit,
+    workoutSavedResult: Boolean = false,
+    onConsumeWorkoutSavedResult: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: WorkoutListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+
+    LaunchedEffect(workoutSavedResult) {
+        if (workoutSavedResult) {
+            onConsumeWorkoutSavedResult()
+            viewModel.onWorkoutSavedResult()
+        }
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
