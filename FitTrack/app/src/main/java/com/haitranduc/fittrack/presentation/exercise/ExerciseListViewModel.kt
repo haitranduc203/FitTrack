@@ -12,11 +12,13 @@ import com.haitranduc.fittrack.presentation.util.UiText
 import com.haitranduc.fittrack.presentation.util.toUiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -29,7 +31,7 @@ sealed interface ExerciseListEvent {
     data class ShowSnackbar(val message: UiText) : ExerciseListEvent
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 @HiltViewModel
 class ExerciseListViewModel @Inject constructor(
     private val exerciseRepository: ExerciseRepository,
@@ -55,8 +57,12 @@ class ExerciseListViewModel @Inject constructor(
     private val favoriteErrorMessage = MutableStateFlow<UiText?>(null)
     private val retryTrigger = MutableStateFlow(0)
 
+    private val debouncedQuery = searchQuery.debounce { query ->
+        if (query.isBlank()) 0L else 200L
+    }
+
     private val filtersFlow = combine(
-        searchQuery,
+        debouncedQuery,
         selectedBodyPart,
         selectedEquipment,
         isFavoritesOnly
@@ -71,23 +77,37 @@ class ExerciseListViewModel @Inject constructor(
         val isFavoritesOnly: Boolean
     )
 
+    private data class ExerciseDataState(
+        val isLoading: Boolean,
+        val exercises: List<Exercise>,
+        val errorMessage: UiText?,
+        val favoriteExerciseIds: Set<String>,
+        val pendingFavoriteIds: Set<String>,
+        val favoriteErrorMessage: UiText?,
+        val selectedBodyPart: String?,
+        val selectedEquipment: String?,
+        val isFavoritesOnly: Boolean
+    )
+
     private var lastLoadedExercises: List<Exercise> = emptyList()
 
-    val uiState: StateFlow<ExerciseListUiState> = combine(
+    private val exerciseDataFlow = combine(
         filtersFlow,
         retryTrigger
     ) { filters, _ -> filters }
         .flatMapLatest { filters ->
             flow {
                 emit(
-                    ExerciseListUiState(
+                    ExerciseDataState(
                         isLoading = lastLoadedExercises.isEmpty(),
                         exercises = lastLoadedExercises,
-                        searchQuery = filters.query,
+                        errorMessage = null,
+                        favoriteExerciseIds = emptySet(),
+                        pendingFavoriteIds = pendingFavoriteIds.value,
+                        favoriteErrorMessage = favoriteErrorMessage.value,
                         selectedBodyPart = filters.bodyPart,
                         selectedEquipment = filters.equipment,
-                        isFavoritesOnly = filters.isFavoritesOnly,
-                        errorMessage = null
+                        isFavoritesOnly = filters.isFavoritesOnly
                     )
                 )
 
@@ -119,30 +139,29 @@ class ExerciseListViewModel @Inject constructor(
                             } else {
                                 favError
                             }
-                            ExerciseListUiState(
+                            ExerciseDataState(
                                 isLoading = false,
                                 exercises = displayedExercises,
-                                searchQuery = filters.query,
-                                selectedBodyPart = filters.bodyPart,
-                                selectedEquipment = filters.equipment,
                                 errorMessage = null,
                                 favoriteExerciseIds = favoriteIds,
-                                isFavoritesOnly = filters.isFavoritesOnly,
                                 pendingFavoriteIds = pending,
-                                favoriteErrorMessage = errorMsg
+                                favoriteErrorMessage = errorMsg,
+                                selectedBodyPart = filters.bodyPart,
+                                selectedEquipment = filters.equipment,
+                                isFavoritesOnly = filters.isFavoritesOnly
                             )
                         }
                         is DataResult.Failure -> {
-                            ExerciseListUiState(
+                            ExerciseDataState(
                                 isLoading = false,
                                 exercises = lastLoadedExercises,
-                                searchQuery = filters.query,
+                                errorMessage = exercisesResult.error.toUiText(),
+                                favoriteExerciseIds = emptySet(),
+                                pendingFavoriteIds = pending,
+                                favoriteErrorMessage = favError,
                                 selectedBodyPart = filters.bodyPart,
                                 selectedEquipment = filters.equipment,
-                                errorMessage = exercisesResult.error.toUiText(),
-                                isFavoritesOnly = filters.isFavoritesOnly,
-                                pendingFavoriteIds = pending,
-                                favoriteErrorMessage = favError
+                                isFavoritesOnly = filters.isFavoritesOnly
                             )
                         }
                     }
@@ -151,11 +170,28 @@ class ExerciseListViewModel @Inject constructor(
                 }
             }
         }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
-            initialValue = ExerciseListUiState(isLoading = true)
+
+    val uiState: StateFlow<ExerciseListUiState> = combine(
+        searchQuery,
+        exerciseDataFlow
+    ) { currentQuery, dataState ->
+        ExerciseListUiState(
+            isLoading = dataState.isLoading,
+            exercises = dataState.exercises,
+            searchQuery = currentQuery,
+            selectedBodyPart = dataState.selectedBodyPart,
+            selectedEquipment = dataState.selectedEquipment,
+            isFavoritesOnly = dataState.isFavoritesOnly,
+            errorMessage = dataState.errorMessage,
+            favoriteExerciseIds = dataState.favoriteExerciseIds,
+            pendingFavoriteIds = dataState.pendingFavoriteIds,
+            favoriteErrorMessage = dataState.favoriteErrorMessage
         )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = ExerciseListUiState(isLoading = true)
+    )
 
     fun onRetry() {
         retryTrigger.value++

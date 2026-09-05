@@ -200,7 +200,11 @@ fun WorkoutListContent(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(uiState.workouts, key = { it.id }) { workout ->
+                    items(
+                        items = uiState.workouts,
+                        key = { it.id },
+                        contentType = { "workout_item" }
+                    ) { workout ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()

@@ -194,7 +194,11 @@ fun HistoryContent(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(uiState.sessions, key = { it.id }) { session ->
+                        items(
+                            items = uiState.sessions,
+                            key = { it.id },
+                            contentType = { "history_session_item" }
+                        ) { session ->
                             val durationText = formatDuration(session.durationSeconds)
                             val dateText = formatDate(session.finishedAt ?: session.startedAt)
 

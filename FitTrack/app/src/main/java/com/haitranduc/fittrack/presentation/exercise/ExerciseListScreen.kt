@@ -365,7 +365,11 @@ fun ExerciseListContent(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(uiState.exercises, key = { it.id }) { exercise ->
+                        items(
+                            items = uiState.exercises,
+                            key = { it.id },
+                            contentType = { "exercise_item" }
+                        ) { exercise ->
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()

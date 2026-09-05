@@ -330,7 +330,11 @@ fun WorkoutEditorContent(
                                 }
                             }
                         } else {
-                            itemsIndexed(uiState.exercises, key = { _, exercise -> exercise.id }) { index, exercise ->
+                            itemsIndexed(
+                                items = uiState.exercises,
+                                key = { _, exercise -> exercise.id },
+                                contentType = { _, _ -> "editor_exercise_item" }
+                            ) { index, exercise ->
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(

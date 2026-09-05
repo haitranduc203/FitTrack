@@ -113,7 +113,11 @@ fun ExercisePickerDialog(
                         .weight(1f),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(exercises, key = { it.id }) { exercise ->
+                    items(
+                        items = exercises,
+                        key = { it.id },
+                        contentType = { "picker_exercise_item" }
+                    ) { exercise ->
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
