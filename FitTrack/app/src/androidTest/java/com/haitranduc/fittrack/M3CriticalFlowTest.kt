@@ -15,9 +15,17 @@ import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
+import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.haitranduc.fittrack.core.database.FitTrackDatabase
+import kotlinx.coroutines.runBlocking
+import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -30,6 +38,34 @@ class M3CriticalFlowTest {
 
     private val context: Context
         get() = ApplicationProvider.getApplicationContext()
+
+    private val testDb: FitTrackDatabase by lazy {
+        Room.databaseBuilder(
+            context,
+            FitTrackDatabase::class.java,
+            "fittrack.db"
+        ).build()
+    }
+
+    @Before
+    fun setUp() {
+        cleanupDatabaseSessions()
+    }
+
+    @After
+    fun tearDown() {
+        cleanupDatabaseSessions()
+    }
+
+    private fun cleanupDatabaseSessions() {
+        runBlocking {
+            try {
+                testDb.openHelper.writableDatabase.execSQL(
+                    "DELETE FROM workout_sessions WHERE finishedAt IS NULL"
+                )
+            } catch (_: Exception) {}
+        }
+    }
 
     private fun waitUntilReady() {
         val titleExercises = context.getString(R.string.title_exercises)
@@ -81,174 +117,194 @@ class M3CriticalFlowTest {
         val uniqueWorkoutName = "M3 Flow Workout " + System.currentTimeMillis()
         val targetExerciseName = "3/4 sit-up"
 
-        // 1. Navigate to Workouts tab
-        composeTestRule.onAllNodesWithText(navWorkouts).onLast().performClick()
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
-            composeTestRule.onAllNodesWithText(titleWorkouts).fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onAllNodesWithText(titleWorkouts).onFirst().assertIsDisplayed()
+        try {
+            // 1. Navigate to Workouts tab
+            composeTestRule.onAllNodesWithText(navWorkouts).onLast().performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(titleWorkouts).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onAllNodesWithText(titleWorkouts).onFirst().assertIsDisplayed()
 
-        // 2. Click Create Workout FAB
-        composeTestRule.onNodeWithContentDescription(cdCreateWorkout).performClick()
-        composeTestRule.waitForIdle()
+            // 2. Click Create Workout FAB
+            composeTestRule.onNodeWithContentDescription(cdCreateWorkout).performClick()
+            composeTestRule.waitForIdle()
 
-        // 3. Enter workout name
-        composeTestRule.onNode(hasSetTextAction()).performTextReplacement(uniqueWorkoutName)
+            // 3. Enter workout name
+            composeTestRule.onNode(hasSetTextAction()).performTextReplacement(uniqueWorkoutName)
 
-        // 4. Add exercise
-        composeTestRule.onNodeWithText(btnAddExercise).performClick()
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
-            composeTestRule.onAllNodesWithText(targetExerciseName).fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onNodeWithText(targetExerciseName).performClick()
-        composeTestRule.waitForIdle()
+            // 4. Add exercise
+            composeTestRule.onNodeWithText(btnAddExercise).performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(targetExerciseName).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(targetExerciseName).performClick()
+            composeTestRule.waitForIdle()
 
-        // 5. Save workout template
-        composeTestRule.onNodeWithText(btnSaveWorkout).performClick()
+            // 5. Save workout template
+            composeTestRule.onNodeWithText(btnSaveWorkout).performClick()
 
-        // 6. Assert workout appears in list
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
-            composeTestRule.onAllNodesWithText(uniqueWorkoutName).fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
+            // 6. Assert workout appears in list
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(uniqueWorkoutName).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
 
-        // 7. Reopen/edit saved workout
-        composeTestRule.onNodeWithText(uniqueWorkoutName).performClick()
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
-            composeTestRule.onAllNodesWithText(btnStartWorkout).fetchSemanticsNodes().isNotEmpty()
-        }
+            // 7. Reopen/edit saved workout
+            composeTestRule.onNodeWithText(uniqueWorkoutName).performClick()
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(btnStartWorkout).fetchSemanticsNodes().isNotEmpty()
+            }
 
-        // 8. Start workout
-        composeTestRule.onNodeWithText(btnStartWorkout).performClick()
+            // 8. Start workout
+            composeTestRule.onNodeWithText(btnStartWorkout).performClick()
 
-        // 9. Verify Active Workout screen
-        composeTestRule.waitUntil(timeoutMillis = 15_000) {
-            composeTestRule.onAllNodesWithText(titleActiveWorkout).fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onNodeWithText(titleActiveWorkout).assertIsDisplayed()
-        composeTestRule.onNodeWithText(targetExerciseName).assertIsDisplayed()
+            // 9. Verify Active Workout screen and assert active session belongs to this newly created workout
+            composeTestRule.waitUntil(timeoutMillis = 15_000) {
+                composeTestRule.onAllNodesWithText(titleActiveWorkout).fetchSemanticsNodes().isNotEmpty() &&
+                composeTestRule.onAllNodesWithText(targetExerciseName).fetchSemanticsNodes().isNotEmpty() &&
+                composeTestRule.onAllNodesWithContentDescription(cdSetDone).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(titleActiveWorkout).assertIsDisplayed()
+            composeTestRule.onNodeWithText(targetExerciseName).assertIsDisplayed()
 
-        // 10. Enter weight 50 and reps 10
-        val textInputNodes = composeTestRule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes()
-        if (textInputNodes.size >= 2) {
-            composeTestRule.onAllNodes(hasSetTextAction())[0].performTextReplacement("50")
-            composeTestRule.onAllNodes(hasSetTextAction())[1].performTextReplacement("10")
-        }
+            val activeSession = runBlocking {
+                testDb.workoutSessionDao().getActiveSession()
+            }
+            assertNotNull("Active session must exist", activeSession)
+            assertEquals("Active session must belong to newly created workout", uniqueWorkoutName, activeSession?.workoutNameSnapshot)
 
-        // 11. Complete Set
-        composeTestRule.onNodeWithContentDescription(cdSetDone).performClick()
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText("1").fetchSemanticsNodes().isNotEmpty()
-        }
+            // 10. Enter weight 50 and reps 10
+            val textInputNodes = composeTestRule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes()
+            if (textInputNodes.size >= 2) {
+                composeTestRule.onAllNodes(hasSetTextAction())[0].performTextReplacement("50")
+                composeTestRule.onAllNodes(hasSetTextAction())[1].performTextReplacement("10")
+            }
 
-        // M4: 90-second rest timer is visible
-        val labelRestTimer = context.getString(R.string.label_rest_timer)
-        val btnSkipRest = context.getString(R.string.btn_skip_rest)
-        val restTimerFormat = context.getString(R.string.rest_timer_format, 1L, 30L)
-        composeTestRule.waitUntil(timeoutMillis = 5_000) {
-            composeTestRule.onAllNodesWithText(labelRestTimer).fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onNodeWithText(labelRestTimer).assertIsDisplayed()
-        composeTestRule.onNodeWithText(restTimerFormat).assertIsDisplayed()
-        composeTestRule.onNodeWithText(btnSkipRest).assertIsDisplayed()
+            // 11. Complete Set
+            composeTestRule.onNodeWithContentDescription(cdSetDone).performScrollTo().performClick()
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText("1").fetchSemanticsNodes().isNotEmpty()
+            }
 
-        // M4: Skip hides/stops the rest timer without waiting 90 real seconds
-        composeTestRule.onNodeWithText(btnSkipRest).performClick()
-        composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText(labelRestTimer).assertDoesNotExist()
+            // M4: 90-second rest timer is visible
+            val labelRestTimer = context.getString(R.string.label_rest_timer)
+            val btnSkipRest = context.getString(R.string.btn_skip_rest)
+            val restTimerFormat = context.getString(R.string.rest_timer_format, 1L, 30L)
+            composeTestRule.waitUntil(timeoutMillis = 5_000) {
+                composeTestRule.onAllNodesWithText(labelRestTimer).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(labelRestTimer).assertIsDisplayed()
+            composeTestRule.onNodeWithText(restTimerFormat).assertIsDisplayed()
+            composeTestRule.onNodeWithText(btnSkipRest).assertIsDisplayed()
 
-        // 12. Finish Workout
-        composeTestRule.onNodeWithText(btnFinishWorkout).performClick()
+            // M4: Skip hides/stops the rest timer without waiting 90 real seconds
+            composeTestRule.onNodeWithText(btnSkipRest).performClick()
+            composeTestRule.waitForIdle()
+            composeTestRule.onNodeWithText(labelRestTimer).assertDoesNotExist()
 
-        // 13. Verify navigated to History Detail
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText(titleHistoryDetail).fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onNodeWithText(titleHistoryDetail).assertIsDisplayed()
+            // 12. Finish Workout
+            composeTestRule.onNodeWithText(btnFinishWorkout).performClick()
 
-        // 14. Assert workout snapshot name, exercise snapshot name, reps, weight, and nonnegative duration
-        composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
-        composeTestRule.onNodeWithText(targetExerciseName).assertIsDisplayed()
-        val expectedSetSummary = context.getString(R.string.label_set_summary_format, 1, "50", 10)
-        composeTestRule.onNodeWithText(expectedSetSummary).assertIsDisplayed()
-        composeTestRule.onNodeWithText(labelDuration).assertIsDisplayed()
+            // 13. Verify navigated to History Detail
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText(titleHistoryDetail).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(titleHistoryDetail).assertIsDisplayed()
 
-        // 15. Navigate back to root and verify History list has the finished session
-        composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
-        composeTestRule.waitForIdle()
+            // 14. Assert workout snapshot name, exercise snapshot name, reps, weight, and nonnegative duration
+            composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
+            composeTestRule.onNodeWithText(targetExerciseName).assertIsDisplayed()
+            val expectedSetSummary = context.getString(R.string.label_set_summary_format, 1, "50", 10)
+            composeTestRule.onNodeWithText(expectedSetSummary).assertIsDisplayed()
+            composeTestRule.onNodeWithText(labelDuration).assertIsDisplayed()
 
-        composeTestRule.onAllNodesWithText(navHistory).onLast().performClick()
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText(titleHistory).fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
+            // 15. Navigate back to root and verify History list has the finished session
+            composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
+            composeTestRule.waitForIdle()
 
-        // M4: History shows at least one workout, completed-set count, and a nonnegative formatted training duration
-        val statWorkouts = context.getString(R.string.stat_workouts)
-        val statSets = context.getString(R.string.stat_sets)
-        val statTime = context.getString(R.string.stat_time)
-        composeTestRule.onAllNodesWithText(statWorkouts).onFirst().assertIsDisplayed()
-        composeTestRule.onNodeWithText(statSets).assertIsDisplayed()
-        composeTestRule.onNodeWithText(statTime).assertIsDisplayed()
-
-        // 16. Recreate Activity and verify History persists across restart/recreation
-        composeTestRule.activityRule.scenario.recreate()
-        composeTestRule.waitForIdle()
-
-        val historyNavNodes = composeTestRule.onAllNodesWithText(navHistory).fetchSemanticsNodes()
-        if (historyNavNodes.isNotEmpty()) {
             composeTestRule.onAllNodesWithText(navHistory).onLast().performClick()
-        }
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText(uniqueWorkoutName).fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText(titleHistory).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
 
-        // 17. Delete workout template and verify completed history session and sets survive
-        composeTestRule.onAllNodesWithText(navWorkouts).onLast().performClick()
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText(titleWorkouts).fetchSemanticsNodes().isNotEmpty()
-        }
+            // M4: History shows at least one workout, completed-set count, and a nonnegative formatted training duration
+            val statWorkouts = context.getString(R.string.stat_workouts)
+            val statSets = context.getString(R.string.stat_sets)
+            val statTime = context.getString(R.string.stat_time)
+            composeTestRule.onAllNodesWithText(statWorkouts).onFirst().assertIsDisplayed()
+            composeTestRule.onNodeWithText(statSets).assertIsDisplayed()
+            composeTestRule.onNodeWithText(statTime).assertIsDisplayed()
 
-        // Click delete on the newly created template (ordered first by updatedAt DESC)
-        val specificDeleteMatcher = hasContentDescription(cdDeleteWorkout) and
-            hasParent(hasParent(hasAnyDescendant(hasText(uniqueWorkoutName))))
-        val matchingNodes = composeTestRule.onAllNodes(specificDeleteMatcher).fetchSemanticsNodes()
-        if (matchingNodes.isNotEmpty()) {
-            composeTestRule.onAllNodes(specificDeleteMatcher).onFirst().performClick()
-        } else {
-            composeTestRule.onAllNodesWithContentDescription(cdDeleteWorkout).onFirst().performClick()
-        }
+            // 16. Recreate Activity and verify History persists across restart/recreation
+            composeTestRule.activityRule.scenario.recreate()
+            composeTestRule.waitForIdle()
 
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText(actionDelete).fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onNodeWithText(actionDelete).performClick()
+            val historyNavNodes = composeTestRule.onAllNodesWithText(navHistory).fetchSemanticsNodes()
+            if (historyNavNodes.isNotEmpty()) {
+                composeTestRule.onAllNodesWithText(navHistory).onLast().performClick()
+            }
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText(uniqueWorkoutName).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
 
-        // Wait until template is removed from Workouts list
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText(uniqueWorkoutName).fetchSemanticsNodes().isEmpty()
-        }
-        composeTestRule.onNodeWithText(uniqueWorkoutName).assertDoesNotExist()
+            // 17. Delete workout template and verify completed history session and sets survive
+            composeTestRule.onAllNodesWithText(navWorkouts).onLast().performClick()
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText(titleWorkouts).fetchSemanticsNodes().isNotEmpty()
+            }
 
-        // 18. Verify finished session and detail still readable in History
-        composeTestRule.onAllNodesWithText(navHistory).onLast().performClick()
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText(uniqueWorkoutName).fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
+            // Click delete on the newly created template (ordered first by updatedAt DESC)
+            val specificDeleteMatcher = hasContentDescription(cdDeleteWorkout) and
+                hasParent(hasParent(hasAnyDescendant(hasText(uniqueWorkoutName))))
+            val matchingNodes = composeTestRule.onAllNodes(specificDeleteMatcher).fetchSemanticsNodes()
+            if (matchingNodes.isNotEmpty()) {
+                composeTestRule.onAllNodes(specificDeleteMatcher).onFirst().performClick()
+            } else {
+                composeTestRule.onAllNodesWithContentDescription(cdDeleteWorkout).onFirst().performClick()
+            }
 
-        // Open history detail and assert preserved snapshots and set logs
-        composeTestRule.onNodeWithText(uniqueWorkoutName).performClick()
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
-            composeTestRule.onAllNodesWithText(titleHistoryDetail).fetchSemanticsNodes().isNotEmpty()
-        }
-        composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
-        composeTestRule.onNodeWithText(targetExerciseName).assertIsDisplayed()
-        composeTestRule.onNodeWithText(expectedSetSummary).assertIsDisplayed()
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText(actionDelete).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(actionDelete).performClick()
 
-        // Clean up: navigate back
-        composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
+            // Wait until template is removed from Workouts list
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText(uniqueWorkoutName).fetchSemanticsNodes().isEmpty()
+            }
+            composeTestRule.onNodeWithText(uniqueWorkoutName).assertDoesNotExist()
+
+            // 18. Verify finished session and detail still readable in History
+            composeTestRule.onAllNodesWithText(navHistory).onLast().performClick()
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText(uniqueWorkoutName).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
+
+            // Open history detail and assert preserved snapshots and set logs
+            composeTestRule.onNodeWithText(uniqueWorkoutName).performClick()
+            composeTestRule.waitUntil(timeoutMillis = 10_000) {
+                composeTestRule.onAllNodesWithText(titleHistoryDetail).fetchSemanticsNodes().isNotEmpty()
+            }
+            composeTestRule.onNodeWithText(uniqueWorkoutName).assertIsDisplayed()
+            composeTestRule.onNodeWithText(targetExerciseName).assertIsDisplayed()
+            composeTestRule.onNodeWithText(expectedSetSummary).assertIsDisplayed()
+
+            // Clean up: navigate back
+            composeTestRule.onNodeWithContentDescription(cdNavigateUp).performClick()
+        } finally {
+            cleanupDatabaseSessions()
+            try {
+                runBlocking {
+                    testDb.openHelper.writableDatabase.execSQL(
+                        "DELETE FROM workouts WHERE name = ?",
+                        arrayOf(uniqueWorkoutName)
+                    )
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     @Test
