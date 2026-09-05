@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
@@ -45,6 +46,8 @@ class WorkoutEditorViewModel @Inject constructor(
 
     companion object {
         const val KEY_DRAFT_NAME = "draft_workout_name"
+        const val KEY_DRAFT_EXERCISE_IDS = "draft_exercise_ids"
+        const val KEY_DRAFT_EXERCISES_EMPTY = "draft_exercises_empty"
     }
 
     private val rawWorkoutId: String? = savedStateHandle.get<String>("workoutId")
@@ -57,6 +60,32 @@ class WorkoutEditorViewModel @Inject constructor(
     private fun checkHasChanges(name: String, exercises: List<Exercise>): Boolean {
         if (!isInitialized) return false
         return name != initialWorkoutName || exercises.map { it.id } != initialExercises.map { it.id }
+    }
+
+    private fun saveExerciseDraft(exercises: List<Exercise>) {
+        savedStateHandle[KEY_DRAFT_EXERCISE_IDS] = ArrayList(exercises.map { it.id })
+        savedStateHandle[KEY_DRAFT_EXERCISES_EMPTY] = exercises.isEmpty()
+    }
+
+    private fun clearDraftKeys() {
+        savedStateHandle.remove<String>(KEY_DRAFT_NAME)
+        savedStateHandle.remove<ArrayList<String>>(KEY_DRAFT_EXERCISE_IDS)
+        savedStateHandle.remove<List<String>>(KEY_DRAFT_EXERCISE_IDS)
+        savedStateHandle.remove<Boolean>(KEY_DRAFT_EXERCISES_EMPTY)
+    }
+
+    private suspend fun rehydrateExercises(exerciseIds: List<String>): List<Exercise> {
+        if (exerciseIds.isEmpty()) return emptyList()
+        val exercisesMap = mutableMapOf<String, Exercise>()
+        for (id in exerciseIds) {
+            if (!exercisesMap.containsKey(id)) {
+                val result = exerciseRepository.observeExercise(id).firstOrNull()
+                if (result is DataResult.Success && result.data != null) {
+                    exercisesMap[id] = result.data
+                }
+            }
+        }
+        return exerciseIds.mapNotNull { exercisesMap[it] }
     }
 
     private val _uiState = MutableStateFlow(WorkoutEditorUiState())
@@ -79,15 +108,45 @@ class WorkoutEditorViewModel @Inject constructor(
             initialExercises = emptyList()
             isInitialized = true
             val draftName = savedStateHandle.get<String>(KEY_DRAFT_NAME) ?: ""
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    isMissing = false,
-                    workoutId = null,
-                    workoutName = draftName,
-                    exercises = emptyList(),
-                    hasUnsavedChanges = checkHasChanges(draftName, emptyList())
-                )
+            val hasDraftExercises = savedStateHandle.contains(KEY_DRAFT_EXERCISE_IDS) ||
+                savedStateHandle.contains(KEY_DRAFT_EXERCISES_EMPTY)
+            val isDraftEmpty = savedStateHandle.get<Boolean>(KEY_DRAFT_EXERCISES_EMPTY) == true
+            val draftIds = savedStateHandle.get<ArrayList<String>>(KEY_DRAFT_EXERCISE_IDS)?.toList()
+                ?: savedStateHandle.get<List<String>>(KEY_DRAFT_EXERCISE_IDS)
+                ?: emptyList()
+
+            if (hasDraftExercises && !isDraftEmpty && draftIds.isNotEmpty()) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = true,
+                        isMissing = false,
+                        workoutId = null,
+                        workoutName = draftName,
+                        exercises = emptyList(),
+                        hasUnsavedChanges = checkHasChanges(draftName, emptyList())
+                    )
+                }
+                viewModelScope.launch {
+                    val rehydrated = rehydrateExercises(draftIds)
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            exercises = rehydrated,
+                            hasUnsavedChanges = checkHasChanges(draftName, rehydrated)
+                        )
+                    }
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isMissing = false,
+                        workoutId = null,
+                        workoutName = draftName,
+                        exercises = emptyList(),
+                        hasUnsavedChanges = checkHasChanges(draftName, emptyList())
+                    )
+                }
             }
         } else {
             val parsedId = rawWorkoutId.toLongOrNull()
@@ -108,16 +167,59 @@ class WorkoutEditorViewModel @Inject constructor(
                                         initialExercises = workout.exercises
                                         isInitialized = true
                                         val draftName = savedStateHandle.get<String>(KEY_DRAFT_NAME) ?: workout.name
-                                        _uiState.update {
-                                            it.copy(
-                                                isLoading = false,
-                                                isMissing = false,
-                                                workoutId = workout.id,
-                                                workoutName = draftName,
-                                                exercises = workout.exercises,
-                                                errorMessage = null,
-                                                hasUnsavedChanges = checkHasChanges(draftName, workout.exercises)
-                                            )
+
+                                        val hasDraftExercises = savedStateHandle.contains(KEY_DRAFT_EXERCISE_IDS) ||
+                                            savedStateHandle.contains(KEY_DRAFT_EXERCISES_EMPTY)
+                                        val isDraftEmpty = savedStateHandle.get<Boolean>(KEY_DRAFT_EXERCISES_EMPTY) == true
+                                        val draftIds = savedStateHandle.get<ArrayList<String>>(KEY_DRAFT_EXERCISE_IDS)?.toList()
+                                            ?: savedStateHandle.get<List<String>>(KEY_DRAFT_EXERCISE_IDS)
+                                            ?: emptyList()
+
+                                        if (hasDraftExercises) {
+                                            if (isDraftEmpty || draftIds.isEmpty()) {
+                                                _uiState.update {
+                                                    it.copy(
+                                                        isLoading = false,
+                                                        isMissing = false,
+                                                        workoutId = workout.id,
+                                                        workoutName = draftName,
+                                                        exercises = emptyList(),
+                                                        errorMessage = null,
+                                                        hasUnsavedChanges = checkHasChanges(draftName, emptyList())
+                                                    )
+                                                }
+                                            } else {
+                                                val existingMap = workout.exercises.associateBy { it.id }.toMutableMap()
+                                                val missingIds = draftIds.filter { !existingMap.containsKey(it) }
+                                                val finalExercises = if (missingIds.isNotEmpty()) {
+                                                    rehydrateExercises(draftIds)
+                                                } else {
+                                                    draftIds.mapNotNull { existingMap[it] }
+                                                }
+                                                _uiState.update {
+                                                    it.copy(
+                                                        isLoading = false,
+                                                        isMissing = false,
+                                                        workoutId = workout.id,
+                                                        workoutName = draftName,
+                                                        exercises = finalExercises,
+                                                        errorMessage = null,
+                                                        hasUnsavedChanges = checkHasChanges(draftName, finalExercises)
+                                                    )
+                                                }
+                                            }
+                                        } else {
+                                            _uiState.update {
+                                                it.copy(
+                                                    isLoading = false,
+                                                    isMissing = false,
+                                                    workoutId = workout.id,
+                                                    workoutName = draftName,
+                                                    exercises = workout.exercises,
+                                                    errorMessage = null,
+                                                    hasUnsavedChanges = checkHasChanges(draftName, workout.exercises)
+                                                )
+                                            }
                                         }
                                     } else {
                                         _uiState.update { current ->
@@ -195,6 +297,7 @@ class WorkoutEditorViewModel @Inject constructor(
             }
         } else {
             val updated = currentList + exercise
+            saveExerciseDraft(updated)
             _uiState.update {
                 it.copy(
                     exercises = updated,
@@ -210,6 +313,7 @@ class WorkoutEditorViewModel @Inject constructor(
         val currentList = _uiState.value.exercises
         if (index in currentList.indices) {
             val updated = currentList.toMutableList().apply { removeAt(index) }
+            saveExerciseDraft(updated)
             _uiState.update {
                 it.copy(
                     exercises = updated,
@@ -224,6 +328,7 @@ class WorkoutEditorViewModel @Inject constructor(
         if (index > 0 && index < currentList.size) {
             val item = currentList.removeAt(index)
             currentList.add(index - 1, item)
+            saveExerciseDraft(currentList)
             _uiState.update {
                 it.copy(
                     exercises = currentList,
@@ -238,6 +343,7 @@ class WorkoutEditorViewModel @Inject constructor(
         if (index >= 0 && index < currentList.size - 1) {
             val item = currentList.removeAt(index)
             currentList.add(index + 1, item)
+            saveExerciseDraft(currentList)
             _uiState.update {
                 it.copy(
                     exercises = currentList,
@@ -285,7 +391,7 @@ class WorkoutEditorViewModel @Inject constructor(
                 )
                 when (val result = saveWorkoutUseCase(workout)) {
                     is SaveWorkoutResult.Success -> {
-                        savedStateHandle.remove<String>(KEY_DRAFT_NAME)
+                        clearDraftKeys()
                         _uiState.update { it.copy(hasUnsavedChanges = false) }
                         _events.send(WorkoutEditorEvent.NavigateBack(result.workoutId))
                     }
@@ -361,7 +467,7 @@ class WorkoutEditorViewModel @Inject constructor(
                 )
                 when (val saveResult = saveWorkoutUseCase(workout)) {
                     is SaveWorkoutResult.Success -> {
-                        savedStateHandle.remove<String>(KEY_DRAFT_NAME)
+                        clearDraftKeys()
                         _uiState.update { it.copy(hasUnsavedChanges = false) }
                         val workoutId = saveResult.workoutId
                         when (val startResult = startWorkoutUseCase(workoutId)) {
