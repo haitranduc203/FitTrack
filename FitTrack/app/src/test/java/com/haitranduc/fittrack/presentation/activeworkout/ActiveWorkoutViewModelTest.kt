@@ -3,7 +3,6 @@ package com.haitranduc.fittrack.presentation.activeworkout
 import androidx.lifecycle.SavedStateHandle
 import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.Exercise
-import com.haitranduc.fittrack.domain.model.SetLog
 import com.haitranduc.fittrack.domain.model.Workout
 import com.haitranduc.fittrack.domain.model.WorkoutSession
 import com.haitranduc.fittrack.domain.repository.DataError
@@ -23,7 +22,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before

@@ -3,7 +3,6 @@ package com.haitranduc.fittrack.data.preferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.haitranduc.fittrack.domain.model.ThemePreference
 import com.haitranduc.fittrack.domain.repository.DataError

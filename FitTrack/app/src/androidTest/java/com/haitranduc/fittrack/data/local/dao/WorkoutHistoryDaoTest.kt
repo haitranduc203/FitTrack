@@ -6,7 +6,6 @@ import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.haitranduc.fittrack.core.database.FitTrackDatabase
-import com.haitranduc.fittrack.data.local.entity.ExerciseEntity
 import com.haitranduc.fittrack.data.local.entity.SetLogEntity
 import com.haitranduc.fittrack.data.local.entity.WorkoutEntity
 import com.haitranduc.fittrack.data.local.entity.WorkoutSessionEntity
@@ -16,7 +15,6 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Test

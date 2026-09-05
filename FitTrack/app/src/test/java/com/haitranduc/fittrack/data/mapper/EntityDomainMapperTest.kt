@@ -10,7 +10,6 @@ import com.haitranduc.fittrack.data.local.relation.WorkoutWithExercises
 import com.haitranduc.fittrack.domain.model.Exercise
 import com.haitranduc.fittrack.domain.model.SetLog
 import com.haitranduc.fittrack.domain.model.Workout
-import com.haitranduc.fittrack.domain.model.WorkoutSession
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
