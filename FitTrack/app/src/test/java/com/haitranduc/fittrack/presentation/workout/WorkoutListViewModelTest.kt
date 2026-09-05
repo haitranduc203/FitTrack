@@ -1,6 +1,5 @@
 package com.haitranduc.fittrack.presentation.workout
 
-import androidx.lifecycle.SavedStateHandle
 import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.Exercise
 import com.haitranduc.fittrack.domain.model.Workout
@@ -32,12 +31,7 @@ class WorkoutListViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var workoutRepository: FakeWorkoutRepository
 
-    private fun createViewModel(savedStateHandle: SavedStateHandle = SavedStateHandle()): WorkoutListViewModel {
-        return WorkoutListViewModel(
-            savedStateHandle = savedStateHandle,
-            workoutRepository = workoutRepository
-        )
-    }
+    private fun createViewModel(): WorkoutListViewModel = WorkoutListViewModel(workoutRepository)
 
     private val sampleWorkout1 = Workout(
         id = 1L,
@@ -230,42 +224,21 @@ class WorkoutListViewModelTest {
     }
 
     @Test
-    fun workoutSavedInSavedStateHandle_emitsShowSnackbarOnce_andClearsKey() = runTest {
-        val handle = SavedStateHandle(mapOf(WorkoutListViewModel.KEY_WORKOUT_SAVED to true))
-        val viewModel = createViewModel(handle)
-        advanceUntilIdle()
-
-        val events = mutableListOf<WorkoutListEvent>()
-        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
-            viewModel.events.toList(events)
-        }
-        advanceUntilIdle()
-
-        assertEquals(1, events.size)
-        assertEquals(
-            WorkoutListEvent.ShowSnackbar(UiText.StringResource(R.string.msg_workout_saved)),
-            events[0]
-        )
-        assertFalse(handle.contains(WorkoutListViewModel.KEY_WORKOUT_SAVED))
-        job.cancel()
-    }
-
-    @Test
     fun workoutSaved_recreationDoesNotReplaySnackbar() = runTest {
-        val handle = SavedStateHandle(mapOf(WorkoutListViewModel.KEY_WORKOUT_SAVED to true))
-        val vm1 = createViewModel(handle)
+        val vm1 = createViewModel()
         advanceUntilIdle()
 
         val events1 = mutableListOf<WorkoutListEvent>()
         val job1 = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
             vm1.events.toList(events1)
         }
+        vm1.onWorkoutSavedResult()
         advanceUntilIdle()
         assertEquals(1, events1.size)
         job1.cancel()
 
-        // Recreate ViewModel with the same handle; key is already consumed
-        val vm2 = createViewModel(handle)
+        // A recreated ViewModel does not replay a previously consumed UI event.
+        val vm2 = createViewModel()
         advanceUntilIdle()
 
         val events2 = mutableListOf<WorkoutListEvent>()
@@ -275,6 +248,24 @@ class WorkoutListViewModelTest {
         advanceUntilIdle()
         assertTrue(events2.isEmpty())
         job2.cancel()
+    }
+
+    @Test
+    fun workoutSavedResult_emitsSingleSnackbar() = runTest {
+        val viewModel = createViewModel()
+        val events = mutableListOf<WorkoutListEvent>()
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.events.toList(events)
+        }
+
+        viewModel.onWorkoutSavedResult()
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(WorkoutListEvent.ShowSnackbar(UiText.StringResource(R.string.msg_workout_saved))),
+            events
+        )
+        job.cancel()
     }
 
     private suspend fun kotlinx.coroutines.flow.Flow<com.haitranduc.fittrack.domain.repository.DataResult<List<Workout>>>.firstSuccessData(): List<Workout> {
