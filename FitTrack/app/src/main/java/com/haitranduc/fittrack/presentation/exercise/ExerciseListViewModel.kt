@@ -2,6 +2,7 @@ package com.haitranduc.fittrack.presentation.exercise
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.Exercise
 import com.haitranduc.fittrack.domain.repository.DataResult
 import com.haitranduc.fittrack.domain.repository.ExerciseRepository
@@ -10,16 +11,22 @@ import com.haitranduc.fittrack.presentation.util.UiText
 import com.haitranduc.fittrack.presentation.util.toUiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+sealed interface ExerciseListEvent {
+    data class ShowSnackbar(val message: UiText) : ExerciseListEvent
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -27,6 +34,9 @@ class ExerciseListViewModel @Inject constructor(
     private val exerciseRepository: ExerciseRepository,
     private val favoriteExerciseRepository: FavoriteExerciseRepository
 ) : ViewModel() {
+
+    private val _events = Channel<ExerciseListEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
 
     private val searchQuery = MutableStateFlow("")
     private val selectedBodyPart = MutableStateFlow<String?>(null)
@@ -164,16 +174,32 @@ class ExerciseListViewModel @Inject constructor(
         favoriteErrorMessage.value = null
 
         viewModelScope.launch {
-            val isCurrentlyFavorite = uiState.value.favoriteExerciseIds.contains(exerciseId)
-            when (val res = favoriteExerciseRepository.setFavorite(exerciseId, !isCurrentlyFavorite)) {
-                is DataResult.Success -> {
-                    // Success handled reactively via Flow
+            try {
+                val isCurrentlyFavorite = uiState.value.favoriteExerciseIds.contains(exerciseId)
+                val newTarget = !isCurrentlyFavorite
+                when (val res = favoriteExerciseRepository.setFavorite(exerciseId, newTarget)) {
+                    is DataResult.Success -> {
+                        _events.send(
+                            ExerciseListEvent.ShowSnackbar(
+                                UiText.StringResource(
+                                    if (newTarget) R.string.msg_favorite_added else R.string.msg_favorite_removed
+                                )
+                            )
+                        )
+                    }
+                    is DataResult.Failure -> {
+                        val err = res.error.toUiText()
+                        favoriteErrorMessage.value = err
+                        _events.send(ExerciseListEvent.ShowSnackbar(err))
+                    }
                 }
-                is DataResult.Failure -> {
-                    favoriteErrorMessage.value = res.error.toUiText()
-                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: java.lang.Error) {
+                throw e
+            } finally {
+                pendingFavoriteIds.update { it - exerciseId }
             }
-            pendingFavoriteIds.update { it - exerciseId }
         }
     }
 

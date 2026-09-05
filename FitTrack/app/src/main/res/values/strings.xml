@@ -225,4 +225,10 @@
     <string name="error_invalid_weight_number">Weight must be a valid number.</string>
     <string name="error_exercise_not_found">Exercise not found.</string>
     <string name="error_history_not_found">Workout summary not found.</string>
+
+    <!-- Snackbar Messages -->
+    <string name="msg_workout_deleted">Workout deleted.</string>
+    <string name="msg_favorite_added">Added to favorites.</string>
+    <string name="msg_favorite_removed">Removed from favorites.</string>
+    <string name="msg_workout_saved">Workout saved.</string>
 </resources>

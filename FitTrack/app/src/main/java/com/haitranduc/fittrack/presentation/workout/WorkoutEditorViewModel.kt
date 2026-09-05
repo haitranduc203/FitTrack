@@ -244,9 +244,11 @@ class WorkoutEditorViewModel @Inject constructor(
                         _uiState.update { it.copy(exerciseErrorRes = resId) }
                     }
                     is SaveWorkoutResult.RepositoryError -> {
+                        val errorText = result.error.toUiText()
                         _uiState.update {
-                            it.copy(errorMessage = result.error.toUiText())
+                            it.copy(errorMessage = errorText)
                         }
+                        _events.send(WorkoutEditorEvent.ShowSnackbar(errorText))
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
@@ -316,9 +318,11 @@ class WorkoutEditorViewModel @Inject constructor(
                                 }
                             }
                             is StartWorkoutResult.Failure -> {
+                                val errorText = startResult.error.toUiText()
                                 _uiState.update {
-                                    it.copy(errorMessage = startResult.error.toUiText())
+                                    it.copy(errorMessage = errorText)
                                 }
+                                _events.send(WorkoutEditorEvent.ShowSnackbar(errorText))
                             }
                         }
                     }
@@ -339,9 +343,11 @@ class WorkoutEditorViewModel @Inject constructor(
                         _uiState.update { it.copy(exerciseErrorRes = resId) }
                     }
                     is SaveWorkoutResult.RepositoryError -> {
+                        val errorText = saveResult.error.toUiText()
                         _uiState.update {
-                            it.copy(errorMessage = saveResult.error.toUiText())
+                            it.copy(errorMessage = errorText)
                         }
+                        _events.send(WorkoutEditorEvent.ShowSnackbar(errorText))
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {

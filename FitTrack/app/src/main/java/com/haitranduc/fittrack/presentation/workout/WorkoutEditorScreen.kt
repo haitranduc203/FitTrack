@@ -24,6 +24,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,8 +34,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,18 +58,24 @@ fun WorkoutEditorScreen(
     viewModel: WorkoutEditorViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
                 is WorkoutEditorEvent.NavigateBack -> onNavigateUp()
                 is WorkoutEditorEvent.NavigateToActiveWorkout -> onStartWorkout(event.sessionId)
+                is WorkoutEditorEvent.ShowSnackbar -> {
+                    snackbarHostState.showSnackbar(event.message.asString(context))
+                }
             }
         }
     }
 
     WorkoutEditorContent(
         uiState = uiState,
+        snackbarHostState = snackbarHostState,
         onNameChanged = viewModel::onNameChanged,
         onAddExerciseClick = viewModel::openExercisePicker,
         onRemoveExercise = viewModel::onRemoveExercise,
@@ -96,10 +106,12 @@ fun WorkoutEditorContent(
     onPickerQueryChange: (String) -> Unit,
     onPickerExerciseSelect: (Exercise) -> Unit,
     onNavigateUp: () -> Unit,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
     modifier: Modifier = Modifier
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {

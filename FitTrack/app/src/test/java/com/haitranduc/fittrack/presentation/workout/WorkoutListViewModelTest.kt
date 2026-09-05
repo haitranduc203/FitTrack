@@ -9,6 +9,7 @@ import com.haitranduc.fittrack.testing.FakeWorkoutRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -146,6 +147,25 @@ class WorkoutListViewModelTest {
         assertNull(state.errorMessage)
         assertEquals(1, state.workouts.size)
         assertEquals(2L, state.workouts[0].id)
+    }
+
+    @Test
+    fun deleteConfirmed_emitsSnackbarEvent() = runTest {
+        workoutRepository.setWorkouts(listOf(sampleWorkout1))
+        val viewModel = WorkoutListViewModel(workoutRepository)
+        advanceUntilIdle()
+
+        var receivedEvent: WorkoutListEvent? = null
+        val job = backgroundScope.launch(kotlinx.coroutines.test.UnconfinedTestDispatcher(testScheduler)) {
+            receivedEvent = viewModel.events.first()
+        }
+
+        viewModel.onDeleteRequested(sampleWorkout1)
+        viewModel.onDeleteConfirmed()
+        advanceUntilIdle()
+
+        assertEquals(WorkoutListEvent.ShowSnackbar(UiText.StringResource(R.string.msg_workout_deleted)), receivedEvent)
+        job.cancel()
     }
 
     @Test

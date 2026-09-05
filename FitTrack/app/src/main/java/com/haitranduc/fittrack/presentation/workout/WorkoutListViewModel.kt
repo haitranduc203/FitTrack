@@ -2,19 +2,27 @@ package com.haitranduc.fittrack.presentation.workout
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.haitranduc.fittrack.R
 import com.haitranduc.fittrack.domain.model.Workout
 import com.haitranduc.fittrack.domain.repository.DataResult
 import com.haitranduc.fittrack.domain.repository.WorkoutRepository
+import com.haitranduc.fittrack.presentation.util.UiText
 import com.haitranduc.fittrack.presentation.util.toUiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+sealed interface WorkoutListEvent {
+    data class ShowSnackbar(val message: UiText) : WorkoutListEvent
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -24,6 +32,9 @@ class WorkoutListViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(WorkoutListUiState(isLoading = true))
     val uiState: StateFlow<WorkoutListUiState> = _uiState.asStateFlow()
+
+    private val _events = Channel<WorkoutListEvent>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
 
     private val retryTrigger = MutableStateFlow(0)
 
@@ -93,13 +104,16 @@ class WorkoutListViewModel @Inject constructor(
                                 errorMessage = null
                             )
                         }
+                        _events.send(WorkoutListEvent.ShowSnackbar(UiText.StringResource(R.string.msg_workout_deleted)))
                     }
                     is DataResult.Failure -> {
+                        val errorText = result.error.toUiText()
                         _uiState.update {
                             it.copy(
-                                errorMessage = result.error.toUiText()
+                                errorMessage = errorText
                             )
                         }
+                        _events.send(WorkoutListEvent.ShowSnackbar(errorText))
                     }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {

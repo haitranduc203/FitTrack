@@ -9,6 +9,7 @@ import com.haitranduc.fittrack.testing.FakeFavoriteExerciseRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -273,6 +274,31 @@ class ExerciseListViewModelTest {
         assertFalse(viewModel.uiState.value.favoriteExerciseIds.contains("ex_2"))
         assertEquals(2, favoriteRepository.setFavoriteCallCount)
 
+        collectJob.cancel()
+    }
+
+    @Test
+    fun toggleFavorite_emitsSnackbarEvent() = runTest(testDispatcher) {
+        val viewModel = createViewModel()
+        val collectJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            viewModel.uiState.collect()
+        }
+        advanceUntilIdle()
+
+        var receivedEvent: ExerciseListEvent? = null
+        val eventJob = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            receivedEvent = viewModel.events.first()
+        }
+
+        viewModel.onToggleFavorite("ex_2")
+        advanceUntilIdle()
+
+        assertEquals(
+            ExerciseListEvent.ShowSnackbar(UiText.StringResource(R.string.msg_favorite_added)),
+            receivedEvent
+        )
+
+        eventJob.cancel()
         collectJob.cancel()
     }
 
