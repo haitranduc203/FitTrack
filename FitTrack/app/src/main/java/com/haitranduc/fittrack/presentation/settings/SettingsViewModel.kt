@@ -10,21 +10,31 @@ import com.haitranduc.fittrack.presentation.util.toUiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+sealed interface SettingsEvent {
+    data class ShowSnackbar(val message: UiText) : SettingsEvent
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val themePreferenceRepository: ThemePreferenceRepository
 ) : ViewModel() {
+
+    private val _events = Channel<SettingsEvent>(Channel.BUFFERED)
+    val events: Flow<SettingsEvent> = _events.receiveAsFlow()
 
     private val isUpdatingTheme = MutableStateFlow(false)
     private val actionErrorMessage = MutableStateFlow<UiText?>(null)
@@ -90,7 +100,9 @@ class SettingsViewModel @Inject constructor(
                         // Update observed reactively via Flow
                     }
                     is DataResult.Failure -> {
-                        actionErrorMessage.value = result.error.toUiText()
+                        val errorText = result.error.toUiText()
+                        actionErrorMessage.value = errorText
+                        _events.send(SettingsEvent.ShowSnackbar(errorText))
                     }
                 }
             } catch (e: CancellationException) {

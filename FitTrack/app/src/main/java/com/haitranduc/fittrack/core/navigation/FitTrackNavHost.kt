@@ -39,6 +39,7 @@ import com.haitranduc.fittrack.presentation.startup.FitTrackViewModel
 import com.haitranduc.fittrack.presentation.startup.StartupUiState
 import com.haitranduc.fittrack.presentation.workout.WorkoutEditorScreen
 import com.haitranduc.fittrack.presentation.workout.WorkoutListScreen
+import com.haitranduc.fittrack.presentation.workout.WorkoutListViewModel
 
 @Composable
 fun FitTrackNavHost(
@@ -246,6 +247,13 @@ fun FitTrackNavHostContent(
                         WorkoutEditorScreen(
                             workoutId = null,
                             onNavigateUp = { navController.navigateUp() },
+                            onWorkoutSaved = {
+                                navController.previousBackStackEntry?.savedStateHandle?.set(
+                                    WorkoutListViewModel.KEY_WORKOUT_SAVED,
+                                    true
+                                )
+                                navController.navigateUp()
+                            },
                             onStartWorkout = { sessionId ->
                                 navController.navigate(FitTrackDestination.activeWorkoutRoute(sessionId)) {
                                     launchSingleTop = true
@@ -259,6 +267,13 @@ fun FitTrackNavHostContent(
                         WorkoutEditorScreen(
                             workoutId = workoutId,
                             onNavigateUp = { navController.navigateUp() },
+                            onWorkoutSaved = {
+                                navController.previousBackStackEntry?.savedStateHandle?.set(
+                                    WorkoutListViewModel.KEY_WORKOUT_SAVED,
+                                    true
+                                )
+                                navController.navigateUp()
+                            },
                             onStartWorkout = { sessionId ->
                                 navController.navigate(FitTrackDestination.activeWorkoutRoute(sessionId)) {
                                     launchSingleTop = true

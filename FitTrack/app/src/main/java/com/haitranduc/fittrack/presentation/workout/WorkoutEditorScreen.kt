@@ -61,6 +61,7 @@ fun WorkoutEditorScreen(
     workoutId: Long?,
     onNavigateUp: () -> Unit,
     onStartWorkout: (Long) -> Unit,
+    onWorkoutSaved: () -> Unit = onNavigateUp,
     modifier: Modifier = Modifier,
     viewModel: WorkoutEditorViewModel = hiltViewModel()
 ) {
@@ -88,7 +89,7 @@ fun WorkoutEditorScreen(
     LaunchedEffect(viewModel) {
         viewModel.events.collect { event ->
             when (event) {
-                is WorkoutEditorEvent.NavigateBack -> onNavigateUp()
+                is WorkoutEditorEvent.NavigateBack -> onWorkoutSaved()
                 is WorkoutEditorEvent.NavigateToActiveWorkout -> onStartWorkout(event.sessionId)
                 is WorkoutEditorEvent.ShowSnackbar -> {
                     snackbarHostState.showSnackbar(event.message.asString(context))

@@ -1,5 +1,6 @@
 package com.haitranduc.fittrack.presentation.workout
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.haitranduc.fittrack.R
@@ -27,8 +28,13 @@ sealed interface WorkoutListEvent {
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class WorkoutListViewModel @Inject constructor(
+    private val savedStateHandle: SavedStateHandle,
     private val workoutRepository: WorkoutRepository
 ) : ViewModel() {
+
+    companion object {
+        const val KEY_WORKOUT_SAVED = "workout_saved"
+    }
 
     private val _uiState = MutableStateFlow(WorkoutListUiState(isLoading = true))
     val uiState: StateFlow<WorkoutListUiState> = _uiState.asStateFlow()
@@ -40,6 +46,18 @@ class WorkoutListViewModel @Inject constructor(
 
     init {
         observeWorkouts()
+        observeSavedState()
+    }
+
+    private fun observeSavedState() {
+        viewModelScope.launch {
+            savedStateHandle.getStateFlow(KEY_WORKOUT_SAVED, false).collect { wasSaved ->
+                if (wasSaved) {
+                    savedStateHandle.remove<Boolean>(KEY_WORKOUT_SAVED)
+                    _events.send(WorkoutListEvent.ShowSnackbar(UiText.StringResource(R.string.msg_workout_saved)))
+                }
+            }
+        }
     }
 
     private fun observeWorkouts() {
